@@ -26,7 +26,7 @@ extern "C"
 {
 #endif
 
-#define LIBG19_VERSION "1.1.0"
+#define LIBG19_VERSION "1.1.1"
 
 #define G19_BMP_SIZE	154112
 
@@ -68,31 +68,74 @@ enum
 	G19_KEY_LUP			= 1 << 23
 };
 
-//Callback for the gkeys or lkeys and passed to g19_set_gkeys_cb() or g19_set_lkeys_cb()
 typedef void(* g19_keys_cb)(unsigned int keys);
 
-//Initializes the g19 library; level is to be 0 to 3 which is the debug level to be passed to libusb
+/**
+ * Initializes the g19 library
+ * 
+ * @param level sets the debug level of libusb (0 - 3)
+ * 
+ * @return non zero on error
+ **/
 int g19_init(int level);
 
-//Clean up and close the g19 library
+/**
+ * Deinitializes the g19 library
+ **/
 void g19_deinit(void);
 
-//Initializes key capture for the g-keys and m-keys and also sets a callback for key events
+/**
+ * Sets a callback for the G-Key and M-Key keypresses
+ * Initializes listening for the G-Keys and M-Keys
+ * 
+ * @param cb callback
+ **/
 void g19_set_gkeys_cb(g19_keys_cb cb);
 
-//Initializes key capture for the l-keys and also sets a callback for key events
+/**
+ * Sets a callback for the L-Key keypresses
+ * Initializes listening for the L-Keys
+ * 
+ * @param cb callback
+ **/
 void g19_set_lkeys_cb(g19_keys_cb cb);
 
-//You can use this to send data with out the pre addes header as in g19_update_lcd_bmp()
+/**
+ * Sends raw data to the lcd without formatting
+ * 
+ * @param data pointer to the screen data
+ * @param len amount of data to be written in bytes
+ **/
 void g19_update_lcd(unsigned char * data, int len);
 
-//This will format a 4bpp and apply the default header data and then send it to the lcd.
+/**
+ * Prepends the header data to the screen data
+ * Formats the bitmap data
+ * Writes the result to the screen
+ * 
+ * @param data pointer to the bitmap data
+ * @param len amount of data to be written in bytes
+ **/
 void g19_update_lcd_bmp(unsigned char * data, int len);
 
-//Sets the backlight color; r is the red, g is the green, and b is the blue if you didn't guess
+/**
+ * Sets the backlighting color
+ * 
+ * @param r amount of red (0 - 255)
+ * @param g amount of green (0 - 255)
+ * @param b amount of blue (0 - 255)
+ * 
+ * @return non zero on error
+ **/
 int g19_set_backlight(int r, int g, int b);
 
-//This sets the m-key lights such as turning the m1 light on and off; You just use the m-key values set in the enum above. G19_KEY_M1 to G19_KEY_MR; If you want more than one key just use a bitwise or
+/**
+ * Sets the M-Key lights
+ * 
+ * @param keys can be any of: G19_KEY_M1, G19_KEY_M2, G19_KEY_M3, G19_KEY_MR; For more than one use bitwise or
+ * 
+ * @return non zero on error
+ **/
 int g19_set_mkey_led(unsigned int keys);
 
 #ifdef __cplusplus

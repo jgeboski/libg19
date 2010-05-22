@@ -118,6 +118,13 @@ static int g19_device_proc(G19Device * g19dev)
 	return 1;
 }
 
+/**
+ * Initializes the g19 library
+ * 
+ * @param level sets the debug level of libusb (0 - 3)
+ * 
+ * @return non zero on error
+ **/
 int g19_init(int level)
 {
 	if(usb_ctx != NULL)
@@ -135,7 +142,7 @@ int g19_init(int level)
 	if(devc < 1)
 		return -1;
 	
-	int i, d = 0, size = sizeof(g19_devices) / sizeof(G19Device);
+	int i, size = sizeof(g19_devices) / sizeof(G19Device);
 	
 	for(i = 0; i < size; i++)
 	{
@@ -148,10 +155,11 @@ int g19_init(int level)
 	return 0;
 }
 
+/**
+ * Deinitializes the g19 library
+ **/
 void g19_deinit(void)
 {
-	int i, size = sizeof(g19_devices) / sizeof(G19Device);
-	
 	if(g19_devh != NULL)
 	{
 		libusb_release_interface(g19_devh, 0);
@@ -170,8 +178,11 @@ void g19_deinit(void)
 	if(lkeys_transfer != NULL)
 		libusb_free_transfer(lkeys_transfer);
 	
-	libusb_free_device_list(dlist, 1);
-	libusb_exit(usb_ctx);
+	if(dlist != NULL)
+		libusb_free_device_list(dlist, 1);
+	
+	if(usb_ctx != NULL);
+		libusb_exit(usb_ctx);
 	
 	pthread_join(event_thd, NULL);
 	pthread_exit(NULL);
@@ -288,6 +299,12 @@ static void g19_lkey_cb(struct libusb_transfer * transfer)
 	libusb_submit_transfer(lkeys_transfer);
 }
 
+/**
+ * Sets a callback for the G-Key and M-Key keypresses
+ * Initializes listening for the G-Keys and M-Keys
+ * 
+ * @param cb callback
+ **/
 void g19_set_gkeys_cb(g19_keys_cb cb)
 {
 	if(g19_devh == NULL)
@@ -312,6 +329,12 @@ void g19_set_gkeys_cb(g19_keys_cb cb)
 	libusb_submit_transfer(gkeys_transfer);
 }
 
+/**
+ * Sets a callback for the L-Key keypresses
+ * Initializes listening for the L-Keys
+ * 
+ * @param cb callback
+ **/
 void g19_set_lkeys_cb(g19_keys_cb cb)
 {
 	if(g19_devh == NULL)
@@ -329,19 +352,32 @@ void g19_set_lkeys_cb(g19_keys_cb cb)
 	libusb_submit_transfer(lkeys_transfer);
 }
 
+/**
+ * Sends raw data to the lcd without formatting
+ * 
+ * @param data pointer to the screen data
+ * @param len amount of data to be written in bytes
+ **/
 void g19_update_lcd(unsigned char * data, int len)
 {
 	struct libusb_transfer * lcd_transfer = libusb_alloc_transfer(0);
-	lcd_transfer -> flags = LIBUSB_TRANSFER_FREE_BUFFER;
+	lcd_transfer -> flags = LIBUSB_TRANSFER_FREE_TRANSFER;
 	
 	libusb_fill_bulk_transfer(lcd_transfer, g19_devh, 0x02, data, len, NULL, NULL, 0);
 	libusb_submit_transfer(lcd_transfer);
 }
 
+/**
+ * Prepends the header data to the screen data
+ * Formats the bitmap data
+ * Writes the result to the screen
+ * 
+ * @param data pointer to the bitmap data
+ * @param len amount of data to be written in bytes
+ **/
 void g19_update_lcd_bmp(unsigned char * data, int len)
 {
 	unsigned char bits[G19_BMP_SIZE];
-	int dsize = G19_BMP_SIZE - sizeof(hdata);
 	
 	if(g19_devh == NULL)
 		return;
@@ -365,43 +401,72 @@ void g19_update_lcd_bmp(unsigned char * data, int len)
 	g19_update_lcd(bits, G19_BMP_SIZE);
 }
 
+/**
+ * Sets the backlighting color
+ * 
+ * @param r amount of red (0 - 255)
+ * @param g amount of green (0 - 255)
+ * @param b amount of blue (0 - 255)
+ * 
+ * @return non zero on error
+ **/
 int g19_set_backlight(int r, int g, int b)
 {
 	if(g19_devh == NULL)
 		return -1;
 	
-	unsigned char data[4] = {255, r, g, b};
-	int res = libusb_control_transfer(g19_devh, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE, 9, 0x307, 1, data, 4, 7);
+	unsigned char data[12];
+	struct libusb_transfer * led_transfer = libusb_alloc_transfer(0);
+	led_transfer -> flags = LIBUSB_TRANSFER_FREE_TRANSFER;
 	
-	if(res < 0)
-		return res;
+	data[8] = 255;
+	data[9] = r;
+	data[10] = g;
+	data[11] = b;
+	
+	libusb_fill_control_setup(data, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE, 9, 0x307, 1, 4);
+	libusb_fill_control_transfer(led_transfer, g19_devh, data, NULL, NULL, 0);
+	
+	libusb_submit_transfer(led_transfer);
 	
 	return 0;
 }
 
+/**
+ * Sets the M-Key lights
+ * 
+ * @param keys can be any of: G19_KEY_M1, G19_KEY_M2, G19_KEY_M3, G19_KEY_MR; For more than one use bitwise or
+ * 
+ * @return non zero on error
+ **/
 int g19_set_mkey_led(unsigned int keys)
 {
-	unsigned char data[2] = {0x10, 0x00};
-	
 	if(g19_devh == NULL)
 		return -1;
 	
+	unsigned char data[10];
+	struct libusb_transfer * led_transfer = libusb_alloc_transfer(0);
+	led_transfer -> flags = LIBUSB_TRANSFER_FREE_TRANSFER;
+	
+	data[8] = 0x10;
+	data[9] = 0x00;
+	
 	if(keys & G19_KEY_M1)
-		data[1] |= 0x10 << 3;
+		data[9] |= 0x10 << 3;
 	
 	if(keys & G19_KEY_M2)
-		data[1] |= 0x10 << 2;
+		data[9] |= 0x10 << 2;
 	
 	if(keys & G19_KEY_M3)
-		data[1] |= 0x10 << 1;
+		data[9] |= 0x10 << 1;
 	
 	if(keys & G19_KEY_MR)
-		data[1] |= 0x10 << 0;
+		data[9] |= 0x10 << 0;
 	
-	int res = libusb_control_transfer(g19_devh, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE, 9, 0x305, 1, data, 2, 7);
+	libusb_fill_control_setup(data, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE, 9, 0x305, 1, 2);
+	libusb_fill_control_transfer(led_transfer, g19_devh, data, NULL, NULL, 0);
 	
-	if(res)
-		return res;
+	libusb_submit_transfer(led_transfer);
 	
 	return 0;
 }
