@@ -1,3 +1,7 @@
+1.1.0
+	- Added a new function for processing and sending 4bpp bitmaps.
+	- Removed automatic sending of hdata in g19_update_lcd() and instead added it to g19_update_lcd_bmp().
+
 1.0.1
 	- Stopped holding device handle in G19Device structure
 	- Added some more NULL device handle checks

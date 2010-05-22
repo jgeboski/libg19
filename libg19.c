@@ -331,21 +331,38 @@ void g19_set_lkeys_cb(g19_keys_cb cb)
 
 void g19_update_lcd(unsigned char * data, int len)
 {
-	unsigned char bits[154112];
-	int dsize = 154112 - sizeof(hdata);
+	struct libusb_transfer * lcd_transfer = libusb_alloc_transfer(0);
+	lcd_transfer -> flags = LIBUSB_TRANSFER_FREE_BUFFER;
+	
+	libusb_fill_bulk_transfer(lcd_transfer, g19_devh, 0x02, data, len, NULL, NULL, 0);
+	libusb_submit_transfer(lcd_transfer);
+}
+
+void g19_update_lcd_bmp(unsigned char * data, int len)
+{
+	unsigned char bits[G19_BMP_SIZE];
+	int dsize = G19_BMP_SIZE - sizeof(hdata);
 	
 	if(g19_devh == NULL)
 		return;
 	
 	memset(&bits, 0x00, sizeof(bits));
 	memcpy(&bits, &hdata, sizeof(hdata));
-	memcpy(bits + 512, data, (len <= dsize) ? len : dsize);
 	
-	struct libusb_transfer * lcd_transfer = libusb_alloc_transfer(0);
-	lcd_transfer -> flags = LIBUSB_TRANSFER_FREE_BUFFER;
 	
-	libusb_fill_bulk_transfer(lcd_transfer, g19_devh, 0x02, bits, 154112, NULL, NULL, 0);
-	libusb_submit_transfer(lcd_transfer);
+	int i, d;
+	unsigned int color;
+	
+	for(i = sizeof(hdata); (i < G19_BMP_SIZE) && (d < len); i += 2, d += 4)
+	{
+		color = (data[d] / 8) << 11;
+		color |= (data[d + 1] / 4) << 5;
+		color |= data[d + 2] / 8;
+		
+		memcpy(bits + i, &color, 2);
+	}
+	
+	g19_update_lcd(bits, G19_BMP_SIZE);
 }
 
 int g19_set_backlight(int r, int g, int b)

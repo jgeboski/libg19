@@ -26,7 +26,9 @@ extern "C"
 {
 #endif
 
-#define LIBG19_VERSION "1.0.1"
+#define LIBG19_VERSION "1.1.0"
+
+#define G19_BMP_SIZE	154112
 
 typedef struct
 {
@@ -81,10 +83,11 @@ void g19_set_gkeys_cb(g19_keys_cb cb);
 //Initializes key capture for the l-keys and also sets a callback for key events
 void g19_set_lkeys_cb(g19_keys_cb cb);
 
-//data has a max size of 153,600.  len is the amount to be written to the screen.
-//Keep in mind each pixel is 2 bytes. If you divide the max size 153,600 in half
-//you 76,800 which is the same as 320x240 which is the screens size.
+//You can use this to send data with out the pre addes header as in g19_update_lcd_bmp()
 void g19_update_lcd(unsigned char * data, int len);
+
+//This will format a 4bpp and apply the default header data and then send it to the lcd.
+void g19_update_lcd_bmp(unsigned char * data, int len);
 
 //Sets the backlight color; r is the red, g is the green, and b is the blue if you didn't guess
 int g19_set_backlight(int r, int g, int b);
