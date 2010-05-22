@@ -1,0 +1,9 @@
+A small library that gives support for the G19 Keyboard.
+
+Current Support:
+	- LCD & L-Keys
+	- M-Keys and G-Keys
+	- M-Key Lights
+	- Back-light Color
+
+Note: Everytime data is to be sent to the screen 512 bytes of data I sniffed from the keyboard is automatically preppened to it.  I haven't figured it out exactly on what it is doing and whether it is static to the keyboard or not.  I'm assuming it is because I've manager to update the screen and get different stuff to appear with that data.  I'm assuming it's data to onboard computer (obviously) but, I'm thinking it is for different layout keyboard.  The data which is contained in 'hdata.h'.

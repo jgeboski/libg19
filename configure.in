@@ -1,0 +1,25 @@
+AC_PREREQ(2.59)
+AC_INIT(libg19, 1.0.0, jgeboski@users.sourceforge.net)
+AC_PREFIX_DEFAULT(/usr)
+AC_CONFIG_AUX_DIR(config)
+AC_CANONICAL_TARGET()
+
+AM_INIT_AUTOMAKE()
+AC_CONFIG_SRCDIR([libg19.c])
+
+AC_PROG_CC
+AC_PROG_LIBTOOL
+
+PKG_CHECK_MODULES(libg19, [libusb-1.0])
+
+AC_HEADER_STDC
+AC_CHECK_HEADERS([errno.h])
+AC_CHECK_HEADERS([pthread.h])
+AC_CHECK_HEADERS([string.h])
+
+AC_C_CONST
+
+AC_CHECK_FUNCS([memset])
+
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
