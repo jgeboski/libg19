@@ -1,2 +1,6 @@
+1.0.1
+	- Stopped holding device handle in G19Device structure
+	- Added some more NULL device handle checks
+
 1.0.0
 	- Release

@@ -31,6 +31,7 @@ static G19Device g19_devices[] = {
 };
 
 static libusb_context * usb_ctx;
+static libusb_device_handle * g19_devh;
 
 static ssize_t devc;
 static libusb_device ** dlist;
@@ -76,7 +77,7 @@ static int g19_device_proc(G19Device * g19dev)
 		if((dev_desc.idVendor != g19dev -> vendor_id) || (dev_desc.idProduct != g19dev -> product_id))
 			continue;
 		
-		if(libusb_open(dlist[m], &g19dev -> handle))
+		if(libusb_open(dlist[m], &g19_devh))
 			continue;
 		
 		for(c = 0; c < dev_desc.bNumConfigurations; c++)
@@ -92,14 +93,14 @@ static int g19_device_proc(G19Device * g19dev)
 				{
 					intfd = &intf -> altsetting[d];
 					
-					if(libusb_kernel_driver_active(g19dev -> handle, intfd -> bInterfaceNumber))
-						libusb_detach_kernel_driver(g19dev -> handle, intfd -> bInterfaceNumber);
+					if(libusb_kernel_driver_active(g19_devh, intfd -> bInterfaceNumber))
+						libusb_detach_kernel_driver(g19_devh, intfd -> bInterfaceNumber);
 					
-					libusb_set_configuration(g19dev -> handle, cfg_desc -> bConfigurationValue);
-					libusb_claim_interface(g19dev -> handle, intfd -> bInterfaceNumber);
+					libusb_set_configuration(g19_devh, cfg_desc -> bConfigurationValue);
+					libusb_claim_interface(g19_devh, intfd -> bInterfaceNumber);
 					
 					e = 0;
-					while(libusb_claim_interface(g19dev -> handle, intfd -> bInterfaceNumber) && (e < 10))
+					while(libusb_claim_interface(g19_devh, intfd -> bInterfaceNumber) && (e < 10))
 					{
 						sleep(1);
 						e++;
@@ -113,7 +114,7 @@ static int g19_device_proc(G19Device * g19dev)
 		return 0;
 	}
 	
-	g19dev -> handle = NULL;
+	g19_devh = NULL;
 	return 1;
 }
 
@@ -139,26 +140,23 @@ int g19_init(int level)
 	for(i = 0; i < size; i++)
 	{
 		if(!g19_device_proc(&g19_devices[i]))
-			d++;
+			break;
 	}
 	
 	pthread_create(&event_thd, NULL, (void *) g19_event_thread, NULL);
 	
-	return d;
+	return 0;
 }
 
 void g19_deinit(void)
 {
 	int i, size = sizeof(g19_devices) / sizeof(G19Device);
 	
-	for(i = 0; i < size; i++)
+	if(g19_devh != NULL)
 	{
-		if(g19_devices[i].handle == NULL)
-			continue;
-		
-		libusb_release_interface(g19_devices[i].handle, 0);
-		libusb_reset_device(g19_devices[i].handle);
-		libusb_close(g19_devices[i].handle);
+		libusb_release_interface(g19_devh, 0);
+		libusb_reset_device(g19_devh);
+		libusb_close(g19_devh);
 	}
 	
 	lib_deinit = 1;
@@ -292,19 +290,22 @@ static void g19_lkey_cb(struct libusb_transfer * transfer)
 
 void g19_set_gkeys_cb(g19_keys_cb cb)
 {
+	if(g19_devh == NULL)
+		return;
+	
 	gkeys_cb = cb;
 	
 	gkeys_transfer = libusb_alloc_transfer(0);
 	
 	unsigned char data[4];
-	libusb_fill_interrupt_transfer(gkeys_transfer, g19_devices[0].handle,
+	libusb_fill_interrupt_transfer(gkeys_transfer, g19_devh,
 								   LIBUSB_ENDPOINT_IN | LIBUSB_RECIPIENT_OTHER,
 								   data, 4, g19_gkey_cb, NULL, 0);
 	
 	gkeysc_transfer = libusb_alloc_transfer(0);
 	
 	unsigned char cdata[7];
-	libusb_fill_interrupt_transfer(gkeysc_transfer, g19_devices[0].handle,
+	libusb_fill_interrupt_transfer(gkeysc_transfer, g19_devh,
 								   LIBUSB_ENDPOINT_IN | LIBUSB_RECIPIENT_OTHER,
 								   cdata, 7, NULL, NULL, 7);
 	
@@ -313,12 +314,15 @@ void g19_set_gkeys_cb(g19_keys_cb cb)
 
 void g19_set_lkeys_cb(g19_keys_cb cb)
 {
+	if(g19_devh == NULL)
+		return;
+	
 	lkeys_cb = cb;
 	
 	lkeys_transfer = libusb_alloc_transfer(0);
 	
 	unsigned char data[2];
-	libusb_fill_interrupt_transfer(lkeys_transfer, g19_devices[0].handle,
+	libusb_fill_interrupt_transfer(lkeys_transfer, g19_devh,
 								   LIBUSB_ENDPOINT_IN | LIBUSB_RECIPIENT_INTERFACE,
 								   data, 2, g19_lkey_cb, NULL, 0);
 	
@@ -330,6 +334,9 @@ void g19_update_lcd(unsigned char * data, int len)
 	unsigned char bits[154112];
 	int dsize = 154112 - sizeof(hdata);
 	
+	if(g19_devh == NULL)
+		return;
+	
 	memset(&bits, 0x00, sizeof(bits));
 	memcpy(&bits, &hdata, sizeof(hdata));
 	memcpy(bits + 512, data, (len <= dsize) ? len : dsize);
@@ -337,17 +344,17 @@ void g19_update_lcd(unsigned char * data, int len)
 	struct libusb_transfer * lcd_transfer = libusb_alloc_transfer(0);
 	lcd_transfer -> flags = LIBUSB_TRANSFER_FREE_BUFFER;
 	
-	libusb_fill_bulk_transfer(lcd_transfer, g19_devices[0].handle, 0x02, bits, 154112, NULL, NULL, 0);
+	libusb_fill_bulk_transfer(lcd_transfer, g19_devh, 0x02, bits, 154112, NULL, NULL, 0);
 	libusb_submit_transfer(lcd_transfer);
 }
 
 int g19_set_backlight(int r, int g, int b)
 {
-	if(g19_devices[0].handle == NULL)
+	if(g19_devh == NULL)
 		return -1;
 	
 	unsigned char data[4] = {255, r, g, b};
-	int res = libusb_control_transfer(g19_devices[0].handle, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE, 9, 0x307, 1, data, 4, 7);
+	int res = libusb_control_transfer(g19_devh, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE, 9, 0x307, 1, data, 4, 7);
 	
 	if(res < 0)
 		return res;
@@ -359,7 +366,7 @@ int g19_set_mkey_led(unsigned int keys)
 {
 	unsigned char data[2] = {0x10, 0x00};
 	
-	if(g19_devices[0].handle == NULL)
+	if(g19_devh == NULL)
 		return -1;
 	
 	if(keys & G19_KEY_M1)
@@ -374,7 +381,7 @@ int g19_set_mkey_led(unsigned int keys)
 	if(keys & G19_KEY_MR)
 		data[1] |= 0x10 << 0;
 	
-	int res = libusb_control_transfer(g19_devices[0].handle, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE, 9, 0x305, 1, data, 2, 7);
+	int res = libusb_control_transfer(g19_devh, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE, 9, 0x305, 1, data, 2, 7);
 	
 	if(res)
 		return res;

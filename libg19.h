@@ -20,30 +20,19 @@
 #define G19_H
 
 #include <stdint.h>
-#include <libusb.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#define LIBG19_VERSION "1.0.0"
-
-typedef enum LibG19LogType
-{
-	G19_LOG_INFO = 0,
-	G19_LOG_WARN,
-	G19_LOG_ERROR,
-	G19_LOG_DEBUG
-}
-G19LogType;
+#define LIBG19_VERSION "1.0.1"
 
 typedef struct
 {
 	char * name;
 	uint16_t vendor_id;
 	uint16_t product_id;
-	libusb_device_handle * handle;
 }
 G19Device;
 
