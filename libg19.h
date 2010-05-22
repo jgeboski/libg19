@@ -44,7 +44,7 @@ typedef struct
 }
 G19Device;
 
-enum
+enum G19UpdateFlags
 {
 	/*
 	 * Flags the screen to be
@@ -69,7 +69,7 @@ enum
 	G19_DATA_TYPE_BMP	= 1 << 3
 };
 
-enum
+enum G19Keys
 {
 	G19_KEY_G1			= 1 << 0,
 	G19_KEY_G2			= 1 << 1,
