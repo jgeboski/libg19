@@ -1,5 +1,9 @@
+1.1.2
+	- Removed g19_update_lcd_bmp() and g19_update_lcd_h(). Added support for all updated into g19_update_lcd() with flags param.
+	- Added a type param to g19_update_lcd() and g19_update_lcd_bmp. It will allow for future expansion.
+
 1.1.1
-	- Changed the USB transfer style from synchronous to asynchronous on g19_set_backlight() and g19_set_mkey_led
+	- Changed the USB transfer style from synchronous to asynchronous on g19_set_backlight() and g19_set_mkey_led()
 
 1.1.0
 	- Added a new function for processing and sending 4bpp bitmaps.

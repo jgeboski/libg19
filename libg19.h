@@ -20,15 +20,21 @@
 #define G19_H
 
 #include <stdint.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#define LIBG19_VERSION "1.1.1"
+#define LIBG19_VERSION_MAJOR	1
+#define LIBG19_VERSION_MINOR	2
+#define LIBG19_VERSION_MICRO	0
+
+#define LIBG19_VERSION			"1.2.0"
 
 #define G19_BMP_SIZE	154112
+#define G19_BMP_DSIZE	153600
 
 typedef struct
 {
@@ -37,6 +43,31 @@ typedef struct
 	uint16_t product_id;
 }
 G19Device;
+
+enum
+{
+	/*
+	 * Flags the screen to be
+	 * used and as of right now
+	 * there is only one which is
+	 * the G19.
+	 */
+	G19_SCREEN_DEFAULT	= 1 << 0,
+	
+	/* Flags to prepend header data */
+	G19_PREPEND_HDATA	= 1 << 1,
+	
+	/* Flags not to parse the data
+	 * and format it
+	 */
+	G19_DATA_TYPE_RAW	= 1 << 2,
+	
+	/* Flags to format a bitmap with
+	 * with just bitmap data that has
+	 * 4 bytes per pixel. (RGBA)
+	 */
+	G19_DATA_TYPE_BMP	= 1 << 3
+};
 
 enum
 {
@@ -104,19 +135,9 @@ void g19_set_lkeys_cb(g19_keys_cb cb);
  * Sends raw data to the lcd without formatting
  * 
  * @param data pointer to the screen data
- * @param len amount of data to be written in bytes
+ * @param size size of the data to be written in bytes
  **/
-void g19_update_lcd(unsigned char * data, int len);
-
-/**
- * Prepends the header data to the screen data
- * Formats the bitmap data
- * Writes the result to the screen
- * 
- * @param data pointer to the bitmap data
- * @param len amount of data to be written in bytes
- **/
-void g19_update_lcd_bmp(unsigned char * data, int len);
+void g19_update_lcd(unsigned char * data, size_t size, unsigned int flags);
 
 /**
  * Sets the backlighting color
