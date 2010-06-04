@@ -413,7 +413,7 @@ void g19_update_lcd(unsigned char * data, size_t size, unsigned int flags)
  * 
  * @return non zero on error
  **/
-int g19_set_backlight(int r, int g, int b)
+int g19_set_backlight(unsigned char r, unsigned char g, unsigned char b)
 {
 	if(g19_devh == NULL)
 		return -1;
