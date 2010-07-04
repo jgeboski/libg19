@@ -6,3 +6,6 @@ lib_LTLIBRARIES = libg19.la
 libg19_la_SOURCES = libg19.c
 libg19_la_LDFLAGS = -version-info 2:0:1
 include_HEADERS = libg19.h
+
+docsdir = $(docdir)/$(PACKAGE)-$(VERSION)
+docs_DATA = AUTHORS ChangeLog COPYING NEWS README

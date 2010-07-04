@@ -1,4 +1,4 @@
-1.1.2
+1.2.0
 	- Removed g19_update_lcd_bmp() and g19_update_lcd_h(). Added support for all updated into g19_update_lcd() with flags param.
 	- Added a type param to g19_update_lcd() and g19_update_lcd_bmp. It will allow for future expansion.
 
