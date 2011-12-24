@@ -1,16 +1,23 @@
-A small library that gives support for the G19 Keyboard.
+Libg19 is a small library based on libusb-1.0 for interacting with
+logitech G19 keyboards.  If you're not a develoepr, and just looking
+to get your keyboard working with GNU/Linux, this will not be of much
+use to you.
 
-Current Support:
-	- LCD & L-Keys			: G19
-	- M-Keys and G-Keys		: G19
-	- M-Key Lights			: G19
-	- Back-light Color		: G19
+If you're looking to get your keyboard functional with GNU/Linux,
+checkout the kernel modules ali1234 has put together, along with
+running Gnome15.
+
+Kernel Modules: https://github.com/ali1234/lg4l
+Gnome15: http://www.gnome15.org/
+
+Current features:
+    - LCD and L-Keys
+    - M-Keys and G-Keys
+    - M-Key backlighting
+    - Keyboard backlighting color
 
 Requirements:
-	- libusb-1.0
+    - libusb-1.0
 
-If you got this source code from the git or other source and it's not configured run:
-
-autoreconf -fi
-
-Then you'll be able to run ./configure, make, and make install.
+To build, you should be able to just run the Makefile, assuming you
+have libusb-1.0 installed.
