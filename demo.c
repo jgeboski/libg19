@@ -25,6 +25,8 @@
 
 #include "libg19.h"
 
+#define print_key(ks, k, ms, m)  if(ks & k) strcat(ms, m " ");
+
 static unsigned char quit;
 
 static void cmd_parse(char * cmd)
@@ -116,14 +118,48 @@ static void cmd_parse(char * cmd)
     }
 }
 
-static void g19_gkeys_cb(unsigned int keys)
+static void g19_gkeys(unsigned int keys)
 {
-    printf("G-Key(s) Pressed: 0x%0x\n", keys);
+    char skeys[40];
+    
+    memset(skeys, 0, 40);
+    
+    print_key(keys, G19_KEY_G1,  skeys, "G1");
+    print_key(keys, G19_KEY_G2,  skeys, "G2");
+    print_key(keys, G19_KEY_G3,  skeys, "G3");
+    print_key(keys, G19_KEY_G4,  skeys, "G4");
+    print_key(keys, G19_KEY_G5,  skeys, "G5");
+    print_key(keys, G19_KEY_G6,  skeys, "G6");
+    print_key(keys, G19_KEY_G7,  skeys, "G7");
+    print_key(keys, G19_KEY_G8,  skeys, "G8");
+    print_key(keys, G19_KEY_G9,  skeys, "G9");
+    print_key(keys, G19_KEY_G10, skeys, "G10");
+    print_key(keys, G19_KEY_G11, skeys, "G11");
+    print_key(keys, G19_KEY_G12, skeys, "G12");
+    print_key(keys, G19_KEY_M1,  skeys, "M1");
+    print_key(keys, G19_KEY_M2,  skeys, "M2");
+    print_key(keys, G19_KEY_M3,  skeys, "M3");
+    print_key(keys, G19_KEY_MR,  skeys, "MR");
+    
+    printf("G-Keys: %s\n", skeys);
 }
 
-static void g19_lkeys_cb(unsigned int keys)
+static void g19_lkeys(unsigned short keys)
 {
-    printf("L-Key(s) Pressed: 0x%0x\n", keys);
+    char skeys[50];
+    
+    memset(skeys, 0, 50);
+    
+    print_key(keys, G19_KEY_LHOME,   skeys, "HOME");
+    print_key(keys, G19_KEY_LCANCEL, skeys, "CANCEL");
+    print_key(keys, G19_KEY_LMENU,   skeys, "MENU");
+    print_key(keys, G19_KEY_LOK,     skeys, "OK");
+    print_key(keys, G19_KEY_LRIGHT,  skeys, "RIGHT");
+    print_key(keys, G19_KEY_LLEFT,   skeys, "LEFT");
+    print_key(keys, G19_KEY_LDOWN,   skeys, "DOWN");
+    print_key(keys, G19_KEY_LUP,     skeys, "UP");
+    
+    printf("L-Keys: %s\n", skeys);
 }
 
 int main(int argc, char * argv[])
@@ -132,8 +168,8 @@ int main(int argc, char * argv[])
     
     g19_init(3);
     
-    g19_set_gkeys_cb(g19_gkeys_cb);
-    g19_set_lkeys_cb(g19_lkeys_cb);
+    g19_set_gkeys_cb(g19_gkeys);
+    g19_set_lkeys_cb(g19_lkeys);
     
     while(!quit) {
         printf("> ");
