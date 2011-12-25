@@ -118,12 +118,12 @@ static void cmd_parse(char * cmd)
 
 static void g19_gkeys_cb(unsigned int keys)
 {
-    printf("G-Key(s) Pressed: %ud\n", keys);
+    printf("G-Key(s) Pressed: 0x%0x\n", keys);
 }
 
 static void g19_lkeys_cb(unsigned int keys)
 {
-    printf("L-Key(s) Pressed: %ud\n", keys);
+    printf("L-Key(s) Pressed: 0x%0x\n", keys);
 }
 
 int main(int argc, char * argv[])
