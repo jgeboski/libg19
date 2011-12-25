@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 James Geboski <jgeboski@users.sourceforge.net>
+ * Copyright 2010-2011 James Geboski <jgeboski@users.sourceforge.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
