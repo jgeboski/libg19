@@ -33,16 +33,11 @@ extern "C"
 
 #define LIBG19_VERSION        "1.2.0"
 
-#define G19_BMP_SIZE   154112
-#define G19_BMP_DSIZE  153600
+#define G19_BMP_SIZE    154112
+#define G19_BMP_DSIZE   153600
 
-typedef struct
-{
-    char * name;
-    uint16_t vendor_id;
-    uint16_t product_id;
-}
-G19Device;
+#define G19_VENDOR_ID   0x046d
+#define G19_PRODUCT_ID  0xc229
 
 enum G19UpdateFlags
 {

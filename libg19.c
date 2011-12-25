@@ -27,12 +27,8 @@
 #include "libg19.h"
 #include "hdata.h"
 
-static G19Device g19_devices[] = {
-    {"Logitech G19 LCD", 0x046d, 0xc229}
-};
-
 static libusb_context * usb_ctx;
-static libusb_device_handle * g19_devh;
+static libusb_device_handle * dhandle;
 
 static ssize_t devc;
 static libusb_device ** dlist;
@@ -57,9 +53,11 @@ static void usb_event_thread(void * data)
         
         libusb_handle_events_timeout(usb_ctx, &tv);
     }
+    
+    pthread_exit(NULL);
 }
 
-static int g19_device_proc(G19Device * g19dev)
+static int g19_device_proc()
 {
     struct libusb_device_descriptor devd;
     struct libusb_config_descriptor * cfgd;
@@ -76,10 +74,10 @@ static int g19_device_proc(G19Device * g19dev)
         if(libusb_get_device_descriptor(dlist[m], &devd))
             continue;
         
-        if((devd.idVendor != g19dev->vendor_id) || (devd.idProduct != g19dev->product_id))
+        if((devd.idVendor != G19_VENDOR_ID) || (devd.idProduct != G19_PRODUCT_ID))
             continue;
         
-        if(libusb_open(dlist[m], &g19_devh))
+        if(libusb_open(dlist[m], &dhandle))
             continue;
         
         for(c = 0; c < devd.bNumConfigurations; c++) {
@@ -92,15 +90,15 @@ static int g19_device_proc(G19Device * g19dev)
                 for(d = 0; d < intf->num_altsetting; d++) {
                     intfd = &intf->altsetting[d];
                     
-                    if(libusb_kernel_driver_active(g19_devh, intfd->bInterfaceNumber))
+                    if(libusb_kernel_driver_active(dhandle, intfd->bInterfaceNumber))
                         libusb_detach_kernel_driver(
-                            g19_devh, intfd->bInterfaceNumber);
+                            dhandle, intfd->bInterfaceNumber);
                     
                     libusb_set_configuration(
-                        g19_devh, cfgd->bConfigurationValue);
+                        dhandle, cfgd->bConfigurationValue);
                     
                     fail = libusb_claim_interface(
-                        g19_devh, intfd->bInterfaceNumber);
+                        dhandle, intfd->bInterfaceNumber);
                     
                     if(fail)
                         fail = 0;
@@ -113,10 +111,10 @@ static int g19_device_proc(G19Device * g19dev)
         if(!fail)
             return LIBUSB_SUCCESS;
         
-        libusb_close(g19_devh);
+        libusb_close(dhandle);
     }
     
-    g19_devh = NULL;
+    dhandle = NULL;
     return LIBUSB_ERROR_NO_DEVICE;
 }
 
@@ -130,28 +128,27 @@ static int g19_device_proc(G19Device * g19dev)
  **/
 int g19_init(int level)
 {
-    int res, size, i;
+    int res;
     
     if(usb_ctx != NULL)
         return LIBUSB_ERROR_BUSY;
     
     res = libusb_init(&usb_ctx);
+    libusb_set_debug(usb_ctx, level);
     
     if(res)
         return res;
-    
-    libusb_set_debug(usb_ctx, level);
     
     devc = libusb_get_device_list(usb_ctx, &dlist);
     
     if(devc < 1)
         return LIBUSB_ERROR_NO_DEVICE;
     
-    size = sizeof g19_devices / sizeof (G19Device);
+    res = g19_device_proc();
     
-    for(i = 0; i < size; i++) {
-        if(!g19_device_proc(&g19_devices[i]))
-            break;
+    if(res) {
+        g19_deinit();
+        return res;
     }
     
     quit = 0;
@@ -165,10 +162,10 @@ int g19_init(int level)
  **/
 void g19_deinit(void)
 {
-    if(g19_devh != NULL) {
-        libusb_release_interface(g19_devh, 0);
-        libusb_reset_device(g19_devh);
-        libusb_close(g19_devh);
+    if(dhandle != NULL) {
+        libusb_release_interface(dhandle, 0);
+        libusb_reset_device(dhandle);
+        libusb_close(dhandle);
     }
     
     quit = 1;
@@ -189,7 +186,6 @@ void g19_deinit(void)
         libusb_exit(usb_ctx);
     
     pthread_join(usb_et, NULL);
-    pthread_exit(NULL);
 }
 
 static void g19_gkey_cb(struct libusb_transfer * transfer)
@@ -228,7 +224,7 @@ void g19_set_gkeys_cb(G19GKeysFunc func)
     unsigned char data[4];
     unsigned char cdata[7];
     
-    if(g19_devh == NULL)
+    if(dhandle == NULL)
         return;
     
     if(gkeys_transfer)
@@ -242,14 +238,13 @@ void g19_set_gkeys_cb(G19GKeysFunc func)
     gkeys_transfer  = libusb_alloc_transfer(0);
     gkeysc_transfer = libusb_alloc_transfer(0);
     
-    libusb_fill_interrupt_transfer(gkeys_transfer, g19_devh,
+    libusb_fill_interrupt_transfer(gkeys_transfer, dhandle,
         0x83, data, 4, g19_gkey_cb, NULL, 0);
     
-    libusb_fill_interrupt_transfer(gkeysc_transfer, g19_devh,
+    libusb_fill_interrupt_transfer(gkeysc_transfer, dhandle,
         0x83, cdata, 7, NULL, NULL, 7);
     
     libusb_submit_transfer(gkeys_transfer);
-    
 }
 
 /**
@@ -262,7 +257,7 @@ void g19_set_lkeys_cb(G19LKeysFunc func)
 {
     unsigned char data[2];
     
-    if(g19_devh == NULL)
+    if(dhandle == NULL)
         return;
     
     if(lkeys_transfer)
@@ -272,7 +267,7 @@ void g19_set_lkeys_cb(G19LKeysFunc func)
     
     lkeys_transfer = libusb_alloc_transfer(0);
     
-    libusb_fill_interrupt_transfer(lkeys_transfer, g19_devh,
+    libusb_fill_interrupt_transfer(lkeys_transfer, dhandle,
         0x81, data, 2, g19_lkey_cb, NULL, 0);
     
     libusb_submit_transfer(lkeys_transfer);
@@ -290,7 +285,7 @@ void g19_update_lcd(unsigned char * data, size_t size, unsigned int flags)
     struct libusb_transfer * transfer;
     unsigned char * bits;
     
-    if((g19_devh == NULL) || (size < 1))
+    if((dhandle == NULL) || (size < 1))
         return;
     
     transfer        = libusb_alloc_transfer(0);
@@ -321,10 +316,10 @@ void g19_update_lcd(unsigned char * data, size_t size, unsigned int flags)
                 (size > G19_BMP_SIZE) ? G19_BMP_DSIZE : size);
         }
         
-        libusb_fill_bulk_transfer(transfer, g19_devh, 0x02,
+        libusb_fill_bulk_transfer(transfer, dhandle, 0x02,
             bits, G19_BMP_SIZE, NULL, NULL, 0);
     } else {
-        libusb_fill_bulk_transfer(transfer, g19_devh, 0x02,
+        libusb_fill_bulk_transfer(transfer, dhandle, 0x02,
             data, size, NULL, NULL, 0);
     }
     
@@ -346,7 +341,7 @@ int g19_set_backlight(unsigned char r, unsigned char g, unsigned char b)
     struct libusb_transfer * transfer;
     unsigned char data[12];
     
-    if(g19_devh == NULL)
+    if(dhandle == NULL)
         return LIBUSB_ERROR_NO_DEVICE;
     
     transfer        = libusb_alloc_transfer(0);
@@ -358,7 +353,7 @@ int g19_set_backlight(unsigned char r, unsigned char g, unsigned char b)
     data[11] = b;
     
     libusb_fill_control_setup(data, 0x21, 9, 0x307, 1, 4);
-    libusb_fill_control_transfer(transfer, g19_devh, data, NULL, NULL, 0);
+    libusb_fill_control_transfer(transfer, dhandle, data, NULL, NULL, 0);
     
     return libusb_submit_transfer(transfer);
 }
@@ -380,7 +375,7 @@ int g19_set_mkey_led(unsigned int keys)
     struct libusb_transfer * transfer;
     unsigned char data[10];
     
-    if(g19_devh == NULL)
+    if(dhandle == NULL)
         return LIBUSB_ERROR_NO_DEVICE;
     
     transfer        = libusb_alloc_transfer(0);
@@ -402,7 +397,7 @@ int g19_set_mkey_led(unsigned int keys)
         data[9] |= 0x10 << 0;
     
     libusb_fill_control_setup(data, 0x21, 9, 0x305, 1, 2);
-    libusb_fill_control_transfer(transfer, g19_devh, data, NULL, NULL, 0);
+    libusb_fill_control_transfer(transfer, dhandle, data, NULL, NULL, 0);
     
     return libusb_submit_transfer(transfer);
 }
