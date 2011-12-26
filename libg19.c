@@ -162,7 +162,7 @@ int g19_init(int level)
  **/
 void g19_deinit(void)
 {
-    if(dhandle != NULL) {
+    if(dhandle) {
         libusb_release_interface(dhandle, 0);
         libusb_reset_device(dhandle);
         libusb_close(dhandle);
@@ -170,19 +170,19 @@ void g19_deinit(void)
     
     quit = 1;
     
-    if(gkeysc_transfer != NULL)
+    if(gkeysc_transfer)
         libusb_free_transfer(gkeysc_transfer);
     
-    if(gkeys_transfer != NULL)
+    if(gkeys_transfer)
         libusb_free_transfer(gkeys_transfer);
     
-    if(lkeys_transfer != NULL)
+    if(lkeys_transfer)
         libusb_free_transfer(lkeys_transfer);
     
-    if(dlist != NULL)
+    if(dlist)
         libusb_free_device_list(dlist, 1);
     
-    if(usb_ctx != NULL);
+    if(usb_ctx);
         libusb_exit(usb_ctx);
     
     pthread_join(usb_et, NULL);
@@ -224,7 +224,7 @@ void g19_set_gkeys_cb(G19GKeysFunc func)
     unsigned char data[4];
     unsigned char cdata[7];
     
-    if(dhandle == NULL)
+    if(!dhandle)
         return;
     
     if(gkeys_transfer)
@@ -257,7 +257,7 @@ void g19_set_lkeys_cb(G19LKeysFunc func)
 {
     unsigned char data[2];
     
-    if(dhandle == NULL)
+    if(!dhandle)
         return;
     
     if(lkeys_transfer)
@@ -285,7 +285,7 @@ void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type)
     struct libusb_transfer * transfer;
     unsigned char * bits;
     
-    if((dhandle == NULL) || (size < 1))
+    if(!dhandle || (size < 1))
         return;
     
     transfer        = libusb_alloc_transfer(0);
@@ -336,7 +336,7 @@ int g19_set_brightness(unsigned char level)
     struct libusb_transfer * transfer;
     unsigned char data[9];
     
-    if(dhandle == NULL)
+    if(!dhandle)
         return LIBUSB_ERROR_NO_DEVICE;
     
     transfer        = libusb_alloc_transfer(0);
@@ -365,7 +365,7 @@ int g19_set_backlight(unsigned char r, unsigned char g, unsigned char b)
     struct libusb_transfer * transfer;
     unsigned char data[12];
     
-    if(dhandle == NULL)
+    if(!dhandle)
         return LIBUSB_ERROR_NO_DEVICE;
     
     transfer        = libusb_alloc_transfer(0);
@@ -399,7 +399,7 @@ int g19_set_mkey_led(unsigned int keys)
     struct libusb_transfer * transfer;
     unsigned char data[10];
     
-    if(dhandle == NULL)
+    if(!dhandle)
         return LIBUSB_ERROR_NO_DEVICE;
     
     transfer        = libusb_alloc_transfer(0);
