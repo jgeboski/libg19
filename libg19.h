@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2011 James Geboski <jgeboski@users.sourceforge.net>
+ * Copyright 2010-2011 James Geboski <jgeboski@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,32 +39,16 @@ extern "C"
 #define G19_VENDOR_ID   0x046d
 #define G19_PRODUCT_ID  0xc229
 
-enum G19UpdateFlags
+typedef enum _G19UpdateType G19UpdateType;
+typedef enum _G19GKeys G19GKeys;
+
+enum _G19UpdateType
 {
-    /*
-     * Flags the screen to be
-     * used and as of right now
-     * there is only one which is
-     * the G19.
-     */
-    G19_SCREEN_DEFAULT = 1 << 0,
-    
-    /* Flags to prepend header data */
-    G19_PREPEND_HDATA  = 1 << 1,
-    
-    /* Flags not to parse the data
-     * and format it
-     */
-    G19_DATA_TYPE_RAW  = 1 << 2,
-    
-    /* Flags to format a bitmap with
-     * with just bitmap data that has
-     * 4 bytes per pixel. (RGBA)
-     */
-    G19_DATA_TYPE_BMP  = 1 << 3
+    G19_UPDATE_TYPE_BMP  = 1 << 0,
+    G19_UPDATE_TYPE_RAW  = 1 << 1
 };
 
-enum G19GKeys
+enum _G19GKeys
 {
     G19_KEY_LHOME   = 1 << 0,
     G19_KEY_LCANCEL = 1 << 1,
@@ -107,7 +91,7 @@ void g19_set_gkeys_cb(G19GKeysFunc cb);
 void g19_set_lkeys_cb(G19LKeysFunc cb);
 
 
-void g19_update_lcd(unsigned char * data, size_t size, unsigned int flags);
+void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type);
 
 int g19_set_backlight(unsigned char r, unsigned char g, unsigned char b);
 

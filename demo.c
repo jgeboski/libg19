@@ -64,8 +64,7 @@ static void cmd_parse(char * cmd)
         unsigned char data[G19_BMP_DSIZE];
         
         memset(data, 0, G19_BMP_DSIZE);
-        g19_update_lcd(data, G19_BMP_DSIZE,
-            G19_PREPEND_HDATA | G19_DATA_TYPE_BMP);
+        g19_update_lcd(data, G19_BMP_DSIZE, G19_UPDATE_TYPE_BMP);
     } else if(!strncmp(args[0], "mled", 4)) {
         unsigned int keys;
         

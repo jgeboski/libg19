@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2011 James Geboski <jgeboski@users.sourceforge.net>
+ * Copyright 2010-2011 James Geboski <jgeboski@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -276,11 +276,11 @@ void g19_set_lkeys_cb(G19LKeysFunc func)
 /**
  * Sends raw data or a bitmap to the LCD screen
  * 
- * @data   pointer to the screen data
- * @size   size of the data to be written in bytes
- * @flags  G19UpdateFlags describing the data
+ * @data  pointer to the LCD screen data
+ * @size  size in bytes of @data
+ * @type  the G19UpdateType to be used
  **/
-void g19_update_lcd(unsigned char * data, size_t size, unsigned int flags)
+void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type)
 {
     struct libusb_transfer * transfer;
     unsigned char * bits;
@@ -292,36 +292,33 @@ void g19_update_lcd(unsigned char * data, size_t size, unsigned int flags)
     transfer->flags = LIBUSB_TRANSFER_FREE_TRANSFER;
     
     bits = malloc(G19_BMP_SIZE);
-    memset(bits, 0x00, G19_BMP_SIZE);
     
-    if((flags & G19_PREPEND_HDATA) || (flags & G19_DATA_TYPE_BMP)) {
-        memcpy(bits, hdata, HDATA_SIZE);
+    memset(bits, 0x00, G19_BMP_SIZE);
+    memcpy(bits, hdata, HDATA_SIZE);
+    
+    if(!(type & G19_UPDATE_TYPE_RAW)) {
+        unsigned int color;
+        int i, d;
         
-        if(flags & G19_DATA_TYPE_BMP) {
-            unsigned int color;
-            int i, d;
+        i = HDATA_SIZE;
+        d = 0;
+        
+        for(; (i < G19_BMP_DSIZE) && (d < size); i += 2, d += 4) {
+            color  = (data[d] / 8) << 11;
+            color |= (data[d + 1] / 4) << 5;
+            color |= data[d + 2] / 8;
             
-            i = HDATA_SIZE;
-            d = 0;
-            
-            for(; (i < G19_BMP_DSIZE) && (d < size); i += 2, d += 4) {
-                color  = (data[d] / 8) << 11;
-                color |= (data[d + 1] / 4) << 5;
-                color |= data[d + 2] / 8;
-                
-                memcpy(bits + i, &color, 2);
-            }
-        } else if(flags & G19_PREPEND_HDATA) {
-            memcpy(bits + HDATA_SIZE, data,
-                (size > G19_BMP_SIZE) ? G19_BMP_DSIZE : size);
+            memcpy(bits + i, &color, 2);
         }
-        
-        libusb_fill_bulk_transfer(transfer, dhandle, 0x02,
-            bits, G19_BMP_SIZE, NULL, NULL, 0);
     } else {
-        libusb_fill_bulk_transfer(transfer, dhandle, 0x02,
-            data, size, NULL, NULL, 0);
+        if(size > G19_BMP_DSIZE)
+            size = G19_BMP_DSIZE;
+        
+        memcpy(bits + HDATA_SIZE, data, size);
     }
+    
+    libusb_fill_bulk_transfer(transfer, dhandle, 0x02,
+            bits, G19_BMP_SIZE, NULL, NULL, 0);
     
     libusb_submit_transfer(transfer);
 }
