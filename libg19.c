@@ -324,6 +324,33 @@ void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type)
 }
 
 /**
+ * Sets the LCDs brightness level
+ * 
+ * @level  the brightness level (0 - 100)
+ * 
+ * return  0 on success, or non-zero on error.  Refer to the libusb
+ *         error messages.
+ **/
+int g19_set_brightness(unsigned char level)
+{
+    struct libusb_transfer * transfer;
+    unsigned char data[9];
+    
+    if(dhandle == NULL)
+        return LIBUSB_ERROR_NO_DEVICE;
+    
+    transfer        = libusb_alloc_transfer(0);
+    transfer->flags = LIBUSB_TRANSFER_FREE_TRANSFER;
+    
+    data[8] = level;
+    
+    libusb_fill_control_setup(data, 0x41, 10, 0, 0, 1);
+    libusb_fill_control_transfer(transfer, dhandle, data, NULL, NULL, 0);
+    
+    return libusb_submit_transfer(transfer);
+}
+
+/**
  * Sets the backlight color
  * 
  * @r       amount of red (0 - 255)

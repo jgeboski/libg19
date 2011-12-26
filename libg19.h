@@ -95,6 +95,8 @@ void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type);
 
 int g19_set_backlight(unsigned char r, unsigned char g, unsigned char b);
 
+int g19_set_brightness(unsigned char level);
+
 int g19_set_mkey_led(unsigned int keys);
 
 #ifdef __cplusplus

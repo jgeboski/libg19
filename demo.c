@@ -60,6 +60,17 @@ static void cmd_parse(char * cmd)
         b = atoi(args[3]);
         
         g19_set_backlight(r, g, b);
+    } else if(!strncmp(args[0], "brightness", 10)) {
+        unsigned char l;
+        
+        if(argc < 2) {
+            printf("Invalid command syntax, refer to `help`\n");
+            return;
+        }
+        
+        l = atoi(args[1]);
+        
+        g19_set_brightness(l);
     } else if(!strncmp(args[0], "clrscr", 6)) {
         unsigned char data[G19_BMP_DSIZE];
         
@@ -106,6 +117,7 @@ static void cmd_parse(char * cmd)
         g19_set_mkey_led(keys);
     } else if(!strncmp(cmd, "help", 4)) {
         puts("backlight R G B    - Set the keyboard backlight color");
+        puts("brightness 0-100   - Set the keyboard brightness");
         puts("clrscr             - Set the LCD to black");
         puts("mled [m1|m2|m3|mr] - Set the M-Key leds on or off");
         puts("help               - Shows this menu");
