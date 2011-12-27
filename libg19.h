@@ -16,8 +16,8 @@
  *
  */
 
-#ifndef G19_H
-#define G19_H
+#ifndef _G19_H_
+#define _G19_H_
 
 #include <stdint.h>
 #include <string.h>

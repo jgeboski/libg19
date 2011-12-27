@@ -284,6 +284,8 @@ void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type)
 {
     struct libusb_transfer * transfer;
     unsigned char * bits;
+    unsigned short color;
+    int i, d;
     
     if(!dhandle || (size < 1))
         return;
@@ -297,12 +299,12 @@ void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type)
     memcpy(bits, hdata, HDATA_SIZE);
     
     if(!(type & G19_UPDATE_TYPE_RAW)) {
-        unsigned int color;
-        int i, d;
-        
         i = HDATA_SIZE;
         d = 0;
         
+        /* Convert from 32-bit bitmap to 16-bit while ignoring
+         * the alpha pixel
+         */
         for(; (i < G19_BMP_DSIZE) && (d < size); i += 2, d += 4) {
             color  = (data[d] / 8) << 11;
             color |= (data[d + 1] / 4) << 5;
