@@ -35,7 +35,7 @@ static void cmd_parse(char * cmd)
     char * cp;
     char * args[4];
     
-    if(!cmd || (cmd[0] == 0))
+    if((cmd != NULL) || (cmd[0] == 0))
         return;
     
     cp = strtok(cmd, " ");
@@ -47,7 +47,7 @@ static void cmd_parse(char * cmd)
     
     argc = i;
     
-    if(!strncmp(args[0], "backlight", 9)) {
+    if(strncmp(args[0], "backlight", 9) == 0) {
         unsigned char r, g, b;
         
         if(argc < 4) {
@@ -60,7 +60,7 @@ static void cmd_parse(char * cmd)
         b = atoi(args[3]);
         
         g19_set_backlight(r, g, b);
-    } else if(!strncmp(args[0], "brightness", 10)) {
+    } else if(strncmp(args[0], "brightness", 10) == 0) {
         unsigned char l;
         
         if(argc < 2) {
@@ -71,12 +71,12 @@ static void cmd_parse(char * cmd)
         l = atoi(args[1]);
         
         g19_set_brightness(l);
-    } else if(!strncmp(args[0], "clrscr", 6)) {
+    } else if(strncmp(args[0], "clrscr", 6) == 0) {
         unsigned char data[G19_BMP_DSIZE];
         
         memset(data, 0, G19_BMP_DSIZE);
         g19_update_lcd(data, G19_BMP_DSIZE, G19_UPDATE_TYPE_BMP);
-    } else if(!strncmp(args[0], "mled", 4)) {
+    } else if(strncmp(args[0], "mled", 4) == 0) {
         unsigned int keys;
         
         if(argc < 2) {
@@ -115,14 +115,14 @@ static void cmd_parse(char * cmd)
         }
         
         g19_set_mkey_led(keys);
-    } else if(!strncmp(cmd, "help", 4)) {
+    } else if(strncmp(cmd, "help", 4) == 0) {
         puts("backlight R G B    - Set the keyboard backlight color");
         puts("brightness 0-100   - Set the keyboard brightness");
         puts("clrscr             - Set the LCD to black");
         puts("mled [m1|m2|m3|mr] - Set the M-Key leds on or off");
         puts("help               - Shows this menu");
         puts("quit               - Exit the application");
-    } else if(!strncmp(args[0], "quit", 4)) {
+    } else if(strncmp(args[0], "quit", 4) == 0) {
         quit = 1;
     } else {
         puts("Type `help` for a list of commands");
