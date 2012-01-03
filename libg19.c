@@ -33,7 +33,7 @@ static libusb_device_handle * dhandle = NULL;
 static ssize_t devc;
 static libusb_device ** dlist;
 
-static unsigned char quit;
+static uint8_t quit;
 static pthread_t usb_et;
 
 static struct libusb_transfer * gkeys_transfer  = NULL;
@@ -108,7 +108,7 @@ static int g19_device_proc()
             libusb_free_config_descriptor(cfgd);
         }
         
-        if(!fail)
+        if(fail != 0)
             return LIBUSB_SUCCESS;
         
         libusb_close(dhandle);
@@ -188,7 +188,7 @@ void g19_deinit(void)
 
 static void g19_gkey_cb(struct libusb_transfer * transfer)
 {
-    unsigned int keys;
+    uint32_t keys;
     
     memcpy(&keys, transfer->buffer, 4);
     gkeys_func(keys);
@@ -203,7 +203,7 @@ static void g19_gkey_cb(struct libusb_transfer * transfer)
 
 static void g19_lkey_cb(struct libusb_transfer * transfer)
 {
-    unsigned short keys;
+    uint16_t keys;
     
     memcpy(&keys, transfer->buffer, 2);
     lkeys_func(keys);
@@ -219,8 +219,8 @@ static void g19_lkey_cb(struct libusb_transfer * transfer)
  **/
 void g19_set_gkeys_cb(G19GKeysFunc func)
 {
-    unsigned char data[4];
-    unsigned char cdata[7];
+    uint8_t data[4];
+    uint8_t cdata[7];
     
     if(dhandle == NULL)
         return;
@@ -253,7 +253,7 @@ void g19_set_gkeys_cb(G19GKeysFunc func)
  **/
 void g19_set_lkeys_cb(G19LKeysFunc func)
 {
-    unsigned char data[2];
+    uint8_t data[2];
     
     if(dhandle == NULL)
         return;
@@ -278,11 +278,11 @@ void g19_set_lkeys_cb(G19LKeysFunc func)
  * @size  size in bytes of @data
  * @type  the G19UpdateType to be used
  **/
-void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type)
+void g19_update_lcd(uint8_t * data, size_t size, G19UpdateType type)
 {
     struct libusb_transfer * transfer;
-    unsigned char * bits;
-    unsigned short color;
+    uint8_t * bits;
+    uint16_t color;
     int i, d;
     
     if((dhandle == NULL) || (size < 1))
@@ -331,10 +331,10 @@ void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type)
  * return  0 on success, or non-zero on error.  Refer to the libusb
  *         error messages.
  **/
-int g19_set_brightness(unsigned char level)
+int g19_set_brightness(uint8_t level)
 {
     struct libusb_transfer * transfer;
-    unsigned char data[9];
+    uint8_t data[9];
     
     if(dhandle == NULL)
         return LIBUSB_ERROR_NO_DEVICE;
@@ -360,10 +360,10 @@ int g19_set_brightness(unsigned char level)
  * @return  0 on success, or non-zero on error.  Refer to the libusb
  *          error messages.
  **/
-int g19_set_backlight(unsigned char r, unsigned char g, unsigned char b)
+int g19_set_backlight(uint8_t r, uint8_t g, uint8_t b)
 {
     struct libusb_transfer * transfer;
-    unsigned char data[12];
+    uint8_t data[12];
     
     if(dhandle == NULL)
         return LIBUSB_ERROR_NO_DEVICE;
@@ -394,10 +394,10 @@ int g19_set_backlight(unsigned char r, unsigned char g, unsigned char b)
  * @return  0 on success, or non-zero on error.  Refer to the libusb
  *          error messages.
  **/
-int g19_set_mkey_led(unsigned int keys)
+int g19_set_mkey_led(uint32_t keys)
 {
     struct libusb_transfer * transfer;
-    unsigned char data[10];
+    uint8_t data[10];
     
     if(dhandle == NULL)
         return LIBUSB_ERROR_NO_DEVICE;

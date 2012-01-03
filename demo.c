@@ -17,8 +17,6 @@
  */
 
 #include <ctype.h>
-#include <pthread.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +25,7 @@
 
 #define print_key(ks, k, ms, m)  if(ks & k) strcat(ms, m " ");
 
-static unsigned char quit;
+static uint8_t quit;
 
 static void cmd_parse(char * cmd)
 {
@@ -48,7 +46,7 @@ static void cmd_parse(char * cmd)
     argc = i;
     
     if(strncmp(args[0], "backlight", 9) == 0) {
-        unsigned char r, g, b;
+        uint8_t r, g, b;
         
         if(argc < 4) {
             printf("Invalid command syntax, refer to `help`\n");
@@ -61,7 +59,7 @@ static void cmd_parse(char * cmd)
         
         g19_set_backlight(r, g, b);
     } else if(strncmp(args[0], "brightness", 10) == 0) {
-        unsigned char l;
+        uint8_t l;
         
         if(argc < 2) {
             printf("Invalid command syntax, refer to `help`\n");
@@ -72,12 +70,12 @@ static void cmd_parse(char * cmd)
         
         g19_set_brightness(l);
     } else if(strncmp(args[0], "clrscr", 6) == 0) {
-        unsigned char data[G19_BMP_DSIZE];
+        uint8_t data[G19_BMP_DSIZE];
         
         memset(data, 0, G19_BMP_DSIZE);
         g19_update_lcd(data, G19_BMP_DSIZE, G19_UPDATE_TYPE_BMP);
     } else if(strncmp(args[0], "mled", 4) == 0) {
-        unsigned int keys;
+        uint32_t keys;
         
         if(argc < 2) {
             g19_set_mkey_led(0);
@@ -129,7 +127,7 @@ static void cmd_parse(char * cmd)
     }
 }
 
-static void g19_gkeys(unsigned int keys)
+static void g19_gkeys(uint32_t keys)
 {
     char skeys[40];
     
@@ -155,7 +153,7 @@ static void g19_gkeys(unsigned int keys)
     printf("G-Keys: %s\n", skeys);
 }
 
-static void g19_lkeys(unsigned short keys)
+static void g19_lkeys(uint16_t keys)
 {
     char skeys[50];
     

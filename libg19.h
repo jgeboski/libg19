@@ -20,7 +20,6 @@
 #define _G19_H_
 
 #include <stdint.h>
-#include <string.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -78,8 +77,8 @@ enum _G19GKeys
     G19_KEY_MR      = 256 << 15
 };
 
-typedef void(* G19GKeysFunc)(unsigned int keys);
-typedef void(* G19LKeysFunc)(unsigned short keys);
+typedef void(* G19GKeysFunc)(uint32_t keys);
+typedef void(* G19LKeysFunc)(uint16_t keys);
 
 int g19_init(int level);
 
@@ -91,13 +90,13 @@ void g19_set_gkeys_cb(G19GKeysFunc cb);
 void g19_set_lkeys_cb(G19LKeysFunc cb);
 
 
-void g19_update_lcd(unsigned char * data, size_t size, G19UpdateType type);
+void g19_update_lcd(uint8_t * data, size_t size, G19UpdateType type);
 
-int g19_set_backlight(unsigned char r, unsigned char g, unsigned char b);
+int g19_set_backlight(uint8_t r, uint8_t g, uint8_t b);
 
-int g19_set_brightness(unsigned char level);
+int g19_set_brightness(uint8_t level);
 
-int g19_set_mkey_led(unsigned int keys);
+int g19_set_mkey_led(uint32_t keys);
 
 #ifdef __cplusplus
 }
