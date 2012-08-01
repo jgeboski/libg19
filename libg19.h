@@ -57,7 +57,7 @@ enum _G19GKeys
     G19_KEY_LLEFT   = 1 << 5,
     G19_KEY_LDOWN   = 1 << 6,
     G19_KEY_LUP     = 1 << 7,
-    
+
     G19_KEY_G1      = 256 << 0,
     G19_KEY_G2      = 256 << 1,
     G19_KEY_G3      = 256 << 2,
@@ -70,7 +70,7 @@ enum _G19GKeys
     G19_KEY_G10     = 256 << 9,
     G19_KEY_G11     = 256 << 10,
     G19_KEY_G12     = 256 << 11,
-    
+
     G19_KEY_M1      = 256 << 12,
     G19_KEY_M2      = 256 << 13,
     G19_KEY_M3      = 256 << 14,

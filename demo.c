@@ -32,86 +32,86 @@ static void cmd_parse(char * cmd)
     int argc, i;
     char * cp;
     char * args[4];
-    
+
     if((cmd != NULL) || (cmd[0] == 0))
         return;
-    
+
     cp = strtok(cmd, " ");
-    
+
     for(i = 0; (cp != NULL) && (i < 4); i++) {
         args[i] = cp;
         cp = strtok(NULL, " ");
     }
-    
+
     argc = i;
-    
+
     if(strncmp(args[0], "backlight", 9) == 0) {
         uint8_t r, g, b;
-        
+
         if(argc < 4) {
             printf("Invalid command syntax, refer to `help`\n");
             return;
         }
-        
+
         r = atoi(args[1]);
         g = atoi(args[2]);
         b = atoi(args[3]);
-        
+
         g19_set_backlight(r, g, b);
     } else if(strncmp(args[0], "brightness", 10) == 0) {
         uint8_t l;
-        
+
         if(argc < 2) {
             printf("Invalid command syntax, refer to `help`\n");
             return;
         }
-        
+
         l = atoi(args[1]);
-        
+
         g19_set_brightness(l);
     } else if(strncmp(args[0], "clrscr", 6) == 0) {
         uint8_t data[G19_BMP_DSIZE];
-        
+
         memset(data, 0, G19_BMP_DSIZE);
         g19_update_lcd(data, G19_BMP_DSIZE, G19_UPDATE_TYPE_BMP);
     } else if(strncmp(args[0], "mled", 4) == 0) {
         uint32_t keys;
-        
+
         if(argc < 2) {
             g19_set_mkey_led(0);
             return;
         }
-        
+
         keys = 0;
         cp   = strtok(args[1], "|");
-        
+
         while(cp != NULL) {
             if(strlen(cp) < 2) {
                 cp = strtok(NULL, "|");
                 continue;
             }
-            
+
             switch(tolower(cp[1])) {
             case '1':
                 keys |= G19_KEY_M1;
                 break;
-            
+
             case '2':
                 keys |= G19_KEY_M2;
                 break;
-            
+
             case '3':
                 keys |= G19_KEY_M3;
                 break;
-            
+
             case 'r':
                 keys |= G19_KEY_MR;
                 break;
             }
-            
+
             cp = strtok(NULL, "|");
         }
-        
+
         g19_set_mkey_led(keys);
     } else if(strncmp(cmd, "help", 4) == 0) {
         puts("backlight R G B    - Set the keyboard backlight color");
@@ -130,9 +130,9 @@ static void cmd_parse(char * cmd)
 static void g19_gkeys(uint32_t keys)
 {
     char skeys[40];
-    
+
     memset(skeys, 0, 40);
-    
+
     print_key(keys, G19_KEY_G1,  skeys, "G1");
     print_key(keys, G19_KEY_G2,  skeys, "G2");
     print_key(keys, G19_KEY_G3,  skeys, "G3");
@@ -149,16 +149,16 @@ static void g19_gkeys(uint32_t keys)
     print_key(keys, G19_KEY_M2,  skeys, "M2");
     print_key(keys, G19_KEY_M3,  skeys, "M3");
     print_key(keys, G19_KEY_MR,  skeys, "MR");
-    
+
     printf("G-Keys: %s\n", skeys);
 }
 
 static void g19_lkeys(uint16_t keys)
 {
     char skeys[50];
-    
+
     memset(skeys, 0, 50);
-    
+
     print_key(keys, G19_KEY_LHOME,   skeys, "HOME");
     print_key(keys, G19_KEY_LCANCEL, skeys, "CANCEL");
     print_key(keys, G19_KEY_LMENU,   skeys, "MENU");
@@ -167,29 +167,29 @@ static void g19_lkeys(uint16_t keys)
     print_key(keys, G19_KEY_LLEFT,   skeys, "LEFT");
     print_key(keys, G19_KEY_LDOWN,   skeys, "DOWN");
     print_key(keys, G19_KEY_LUP,     skeys, "UP");
-    
+
     printf("L-Keys: %s\n", skeys);
 }
 
 int main(int argc, char * argv[])
 {
     char cmd[100];
-    
+
     g19_init(3);
-    
+
     g19_set_gkeys_cb(g19_gkeys);
     g19_set_lkeys_cb(g19_lkeys);
-    
+
     while(!quit) {
         printf("> ");
-        
+
         memset(cmd, 0, 100);
         fgets(cmd, 100, stdin);
-        
+
         cmd_parse(cmd);
     }
-    
+
     g19_deinit();
-    
+
     return 0;
 }
