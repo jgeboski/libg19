@@ -26,11 +26,8 @@ extern "C"
 {
 #endif
 
-#define LIBG19_VERSION_MAJOR  1
-#define LIBG19_VERSION_MINOR  1
-#define LIBG19_VERSION_MICRO  0
-
-#define LIBG19_VERSION        "1.1.0"
+#define LIBG19_VERCODE(m1, m2, m3) (((m1) << 16) | ((m2) << 8) | (m3))
+#define LIBG19_VERSION LIBG19_VERCODE(1, 1, 1)
 
 #define G19_BMP_SIZE    154112
 #define G19_BMP_DSIZE   153600
