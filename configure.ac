@@ -72,5 +72,5 @@ AC_DEFUN([MACRO_CHECK],
 MACRO_CHECK([PKG_CHECK_MODULES], [pkg-config])
 PKG_CHECK_MODULES([LIBUSB], [libusb-1.0])
 
-AC_CONFIG_FILES([Makefile libg19/Makefile])
+AC_CONFIG_FILES([Makefile libg19/Makefile libg19.pc])
 AC_OUTPUT

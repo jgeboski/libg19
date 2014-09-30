@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: @PACKAGE_NAME@
+Description: Library for controlling Logitech G19 keyboards
+URL: @PACKAGE_URL@
+Version: @PACKAGE_VERSION@
+Requires:
+Libs: -L${libdir} -lg19
+Cflags: -I${includedir}
