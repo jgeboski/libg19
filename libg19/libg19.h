@@ -39,12 +39,12 @@ extern "C"
 #define G19_PRODUCT_ID  0xc229
 
 typedef enum _G19UpdateType G19UpdateType;
-typedef enum _G19GKeys G19GKeys;
+typedef enum _G19GKeys      G19GKeys;
 
 enum _G19UpdateType
 {
-    G19_UPDATE_TYPE_BMP  = 1 << 0,
-    G19_UPDATE_TYPE_RAW  = 1 << 1
+    G19_UPDATE_TYPE_BMP = 1 << 0,
+    G19_UPDATE_TYPE_RAW = 1 << 1
 };
 
 enum _G19GKeys
@@ -77,18 +77,16 @@ enum _G19GKeys
     G19_KEY_MR      = 256 << 15
 };
 
-typedef void(* G19GKeysFunc)(uint32_t keys);
-typedef void(* G19LKeysFunc)(uint16_t keys);
+typedef void (*G19GKeysFunc) (uint32_t keys);
+typedef void (*G19LKeysFunc) (uint16_t keys);
 
 int g19_init(int level);
 
 void g19_deinit(void);
 
-
 void g19_set_gkeys_cb(G19GKeysFunc cb);
 
 void g19_set_lkeys_cb(G19LKeysFunc cb);
-
 
 void g19_update_lcd(uint8_t * data, size_t size, G19UpdateType type);
 
@@ -102,4 +100,4 @@ int g19_set_mkey_led(uint32_t keys);
 }
 #endif
 
-#endif
+#endif /* _G19_H_ */
