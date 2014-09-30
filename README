@@ -18,6 +18,3 @@ Current features:
 
 Requirements:
     - libusb-1.0
-
-To build, you should be able to just run the Makefile, assuming you
-have libusb-1.0 installed.
