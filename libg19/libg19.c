@@ -431,9 +431,9 @@ int g19_device_brightness(G19Device *dev, uint8_t brightness)
     transfer = libusb_alloc_transfer(0);
     transfer->flags = LIBUSB_TRANSFER_FREE_TRANSFER;
 
-    data[8] = brightness;
+    data[9] = brightness;
 
-    libusb_fill_control_setup(data, 0x41, 0x10, 0x00, 0x00, 1);
+    libusb_fill_control_setup(data, 0x41, 0x0A, 0x00, 0x00, 1);
     libusb_fill_control_transfer(transfer, dev->hndl, data, NULL, NULL, 0);
 
     return libusb_submit_transfer(transfer);
