@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2012 James Geboski <jgeboski@gmail.com>
+ * Copyright 2010-2014 James Geboski <jgeboski@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -13,269 +13,361 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
-#include <errno.h>
+#include <assert.h>
 #include <libusb.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "libg19.h"
-#include "hdata.h"
 
-static libusb_context       *usb_ctx = NULL;
-static libusb_device_handle *dhandle = NULL;
-
-static ssize_t         devc;
-static libusb_device **dlist;
-
-static uint8_t   quit;
-static pthread_t usb_et;
-
-static struct libusb_transfer *gkeys_transfer  = NULL;
-static struct libusb_transfer *gkeysc_transfer = NULL;
-static struct libusb_transfer *lkeys_transfer  = NULL;
-
-static G19GKeysFunc gkeys_func = NULL;
-static G19LKeysFunc lkeys_func = NULL;
-
-static void usb_event_thread(void *data)
+/**
+ * Initializes a #G19Device with the specified device.
+ *
+ * @param dev   The #G19Device.
+ * @param devs  The list of #libusb_device.
+ * @param index The device index.
+ *
+ * @return The #G19Device or NULL on error.
+ **/
+static int g19_device_init(G19Device *dev, libusb_device **devs, size_t index)
 {
-    struct timeval tv;
+    int devc;
+    int res;
+    int i;
+    int j;
+    int k;
 
-    while (!quit) {
-        tv.tv_sec  = 1;
-        tv.tv_usec = 0;
+    libusb_device *udev;
 
-        libusb_handle_events_timeout(usb_ctx, &tv);
-    }
-
-    pthread_exit(NULL);
-}
-
-static int g19_device_proc()
-{
-    struct libusb_device_descriptor  devd;
-    struct libusb_config_descriptor *cfgd;
-
+    struct libusb_device_descriptor           desc;
+    struct libusb_config_descriptor          *cfgd;
     const struct libusb_interface            *intf;
     const struct libusb_interface_descriptor *intfd;
 
-    int m;
-    int c;
-    int i;
-    int d;
-    int fail;
+    for (i = 0, devc = 0; devs[i] != NULL; i++) {
+        res = libusb_get_device_descriptor(devs[i], &desc);
 
-    /* This needs cleaning up; all these nested statements are ugly */
+        if (res != LIBUSB_SUCCESS)
+            return res;
 
-    for (m = 0, fail = 1; m < devc; m++) {
-        if (libusb_get_device_descriptor(dlist[m], &devd))
-            continue;
+        if ((desc.idVendor  == G19_VENDOR_ID) &&
+            (desc.idProduct == G19_PRODUCT_ID) &&
+            (devc++ == index))
+        {
+            res = libusb_open(devs[i], (libusb_device_handle**) &dev->hndl);
 
-        if ((devd.idVendor != G19_VENDOR_ID) || (devd.idProduct != G19_PRODUCT_ID))
-            continue;
+            if (res != LIBUSB_SUCCESS)
+                return res;
 
-        if (libusb_open(dlist[m], &dhandle))
-            continue;
-
-        for (c = 0; c < devd.bNumConfigurations; c++) {
-            if (libusb_get_config_descriptor(dlist[m], c, &cfgd))
-                continue;
-
-            for (i = 0; i < cfgd->bNumInterfaces; i++) {
-                intf = &cfgd->interface[i];
-
-                for (d = 0; d < intf->num_altsetting; d++) {
-                    intfd = &intf->altsetting[d];
-
-                    if (libusb_kernel_driver_active(dhandle, intfd->bInterfaceNumber))
-                        libusb_detach_kernel_driver(
-                            dhandle, intfd->bInterfaceNumber);
-
-                    libusb_set_configuration(
-                        dhandle, cfgd->bConfigurationValue);
-
-                    fail = libusb_claim_interface(
-                        dhandle, intfd->bInterfaceNumber);
-
-                    if (fail)
-                        fail = 0;
-                }
-            }
-
-            libusb_free_config_descriptor(cfgd);
+            udev = devs[i];
+            break;
         }
-
-        if (fail != 0)
-            return LIBUSB_SUCCESS;
-
-        libusb_close(dhandle);
     }
 
-    dhandle = NULL;
-    return LIBUSB_ERROR_NO_DEVICE;
-}
-
-/**
- * Initializes the g19 library
- *
- * @level   the debug level of libusb (0 - 3)
- *
- * @return  0 on success, or non-zero on error.  Refer to the libusb
- *          error messages.
- **/
-int g19_init(int level)
-{
-    int res;
-
-    if (usb_ctx != NULL)
-        return LIBUSB_ERROR_BUSY;
-
-    res = libusb_init(&usb_ctx);
-    libusb_set_debug(usb_ctx, level);
-
-    if (res != 0)
-        return res;
-
-    devc = libusb_get_device_list(usb_ctx, &dlist);
-    if (devc < 1)
+    if (udev == NULL)
         return LIBUSB_ERROR_NO_DEVICE;
 
-    res = g19_device_proc();
-    if (res != 0) {
-        g19_deinit();
-        return res;
+    for (i = 0; i < desc.bNumConfigurations; i++) {
+        res = libusb_get_config_descriptor(udev, i, &cfgd);
+
+        if (res != LIBUSB_SUCCESS)
+            return res;
+
+        for (j = 0; j < cfgd->bNumInterfaces; j++) {
+            intf = &cfgd->interface[j];
+
+            for (k = 0; k < intf->num_altsetting; k++) {
+                intfd = &intf->altsetting[k];
+                res   = libusb_set_auto_detach_kernel_driver(dev->hndl, 1);
+
+                if (res != LIBUSB_SUCCESS)
+                    return res;
+
+                res = libusb_claim_interface(dev->hndl, intfd->bInterfaceNumber);
+
+                if (res != LIBUSB_SUCCESS)
+                    return res;
+            }
+        }
     }
 
-    quit = 0;
-    pthread_create(&usb_et, NULL, (void *) usb_event_thread, NULL);
-    return 0;
+    return LIBUSB_SUCCESS;
 }
 
 /**
- * Deinitializes the g19 library
+ * Implemented #libusb_transfer_cb_fn for the G-keys.
+ *
+ * @param transfer The #libusb_transfer.
  **/
-void g19_deinit(void)
+static void g19_device_gkey_cb(struct libusb_transfer *transfer)
 {
-    if (dhandle != NULL) {
-        libusb_release_interface(dhandle, 0);
-        libusb_reset_device(dhandle);
-        libusb_close(dhandle);
-    }
+    G19Device *dev = transfer->user_data;
+    uint32_t   keys;
 
-    quit = 1;
-
-    if (gkeysc_transfer != NULL)
-        libusb_free_transfer(gkeysc_transfer);
-
-    if (gkeys_transfer != NULL)
-        libusb_free_transfer(gkeys_transfer);
-
-    if (lkeys_transfer != NULL)
-        libusb_free_transfer(lkeys_transfer);
-
-    if (dlist != NULL)
-        libusb_free_device_list(dlist, 1);
-
-    if (usb_ctx != NULL)
-        libusb_exit(usb_ctx);
-
-    pthread_join(usb_et, NULL);
-}
-
-static void g19_gkey_cb(struct libusb_transfer *transfer)
-{
-    uint32_t keys;
-
+    memset(&keys, 0, sizeof keys);
     memcpy(&keys, transfer->buffer, 4);
-    gkeys_func(keys);
 
-    libusb_submit_transfer(gkeysc_transfer);
+    libusb_submit_transfer(dev->gkctrn);
+    libusb_submit_transfer(dev->gktrn);
 
-    /* Give the control packet time to do it's job */
-    usleep(12000);
-
-    libusb_submit_transfer(gkeys_transfer);
+    if (dev->keys != NULL)
+        dev->keys(dev, keys, dev->data);
 }
 
-static void g19_lkey_cb(struct libusb_transfer *transfer)
+/**
+ * Implemented #libusb_transfer_cb_fn for the L-keys.
+ *
+ * @param transfer The #libusb_transfer.
+ **/
+static void g19_device_lkey_cb(struct libusb_transfer *transfer)
 {
-    uint16_t keys;
+    G19Device *dev = transfer->user_data;
+    uint32_t   keys;
 
+    memset(&keys, 0, sizeof keys);
     memcpy(&keys, transfer->buffer, 2);
-    lkeys_func(keys);
+    libusb_submit_transfer(dev->lktrn);
 
-    libusb_submit_transfer(lkeys_transfer);
+    if (dev->keys != NULL)
+        dev->keys(dev, keys, dev->data);
 }
 
 /**
- * Sets a callback that is called upon keypress event(s) from the
- * G-Keys and M-Keys being triggered
+ * Opens a new #G19Device. The returned #G19Device should be closed with
+ * #g19_device_close() when no longer needed.
  *
- * @func  a pointer to a G19GKeysFunc
+ * @param index The device index.
+ * @param error The return location for a #libusb_error or NULL.
+ *
+ * @return The #G19Device or NULL on error.
  **/
-void g19_set_gkeys_cb(G19GKeysFunc func)
+G19Device *g19_device_open(size_t index, int *error)
 {
-    uint8_t data[4];
-    uint8_t cdata[7];
+    G19Device      *dev;
+    libusb_device **devs;
+    size_t          devc;
+    uint8_t         data[7];
+    int             res;
 
-    if (dhandle == NULL)
-        return;
+    dev = calloc(sizeof *dev, 1);
+    assert(dev != NULL);
+    memset(dev, 0, sizeof *dev);
+    res = libusb_init((libusb_context**) &dev->ctx);
 
-    if (gkeys_transfer != NULL)
-        libusb_free_transfer(gkeys_transfer);
+    if (res != LIBUSB_SUCCESS)
+        goto error;
 
-    if (gkeysc_transfer != NULL)
-        libusb_free_transfer(gkeysc_transfer);
+#ifdef DEBUG
+    libusb_set_debug(dev->ctx, LIBUSB_LOG_LEVEL_DEBUG);
+#endif
 
-    gkeys_func      = func;
-    gkeys_transfer  = libusb_alloc_transfer(0);
-    gkeysc_transfer = libusb_alloc_transfer(0);
+    devc = libusb_get_device_list(dev->ctx, &devs);
 
-    libusb_fill_interrupt_transfer(gkeys_transfer, dhandle, 0x83, data, 4,
-                                   g19_gkey_cb, NULL, 0);
-    libusb_fill_interrupt_transfer(gkeysc_transfer, dhandle, 0x83, cdata, 7,
+    if (devc < LIBUSB_SUCCESS)
+        goto error;
+
+    res = g19_device_init(dev, devs, index);
+    libusb_free_device_list(devs, 1);
+
+    if (res != LIBUSB_SUCCESS)
+        goto error;
+
+    dev->lktrn  = libusb_alloc_transfer(0);
+    dev->gktrn  = libusb_alloc_transfer(0);
+    dev->gkctrn = libusb_alloc_transfer(0);
+
+    libusb_fill_interrupt_transfer(dev->lktrn, dev->hndl, 0x81, data, 2,
+                                   g19_device_lkey_cb, dev, 0);
+    libusb_fill_interrupt_transfer(dev->gktrn, dev->hndl, 0x83, data, 4,
+                                   g19_device_gkey_cb, dev, 0);
+    libusb_fill_interrupt_transfer(dev->gkctrn, dev->hndl, 0x83, data, 7,
                                    NULL, NULL, 7);
-    libusb_submit_transfer(gkeys_transfer);
+
+    res = libusb_submit_transfer(dev->lktrn);
+
+    if (res != LIBUSB_SUCCESS)
+        goto error;
+
+    res = libusb_submit_transfer(dev->gktrn);
+
+    if (res != LIBUSB_SUCCESS)
+        goto error;
+
+    if (error != NULL)
+        *error = LIBUSB_SUCCESS;
+
+    libusb_lock_events(dev->ctx);
+    return dev;
+
+error:
+    if (error != NULL)
+        *error = res;
+
+    g19_device_close(dev);
+    return NULL;
 }
 
 /**
- * Sets a callback that is called upon keypress event(s) from the
- * L-Keys being triggered
+ * Closes and frees all memory used by a #G19Device.
  *
- * @cb  a pointer to a G19LKeysFunc
+ * @param dev The #G19Device.
  **/
-void g19_set_lkeys_cb(G19LKeysFunc func)
+void g19_device_close(G19Device *dev)
 {
-    uint8_t data[2];
-
-    if (dhandle == NULL)
+    if (dev == NULL)
         return;
 
-    if (lkeys_transfer != NULL)
-        libusb_free_transfer(lkeys_transfer);
+    if (dev->gkctrn == NULL)
+        libusb_free_transfer(dev->gkctrn);
 
-    lkeys_func     = func;
-    lkeys_transfer = libusb_alloc_transfer(0);
+    if (dev->gktrn == NULL)
+        libusb_free_transfer(dev->gktrn);
 
-    libusb_fill_interrupt_transfer(lkeys_transfer, dhandle, 0x81, data, 2,
-                                   g19_lkey_cb, NULL, 0);
-    libusb_submit_transfer(lkeys_transfer);
+    if (dev->lktrn == NULL)
+        libusb_free_transfer(dev->lktrn);
+
+    if (dev->hndl != NULL) {
+        //libusb_reset_device(dev->hndl);
+        libusb_close(dev->hndl);
+    }
+
+    if (dev->ctx != NULL)
+        libusb_exit(dev->ctx);
+
+    free(dev);
 }
 
 /**
- * Sends raw data or a bitmap to the LCD screen
+ * Gets a NULL-terminated list of file descriptors for polling. The
+ * returned list should be freed with #free() when no longer needed.
  *
- * @data  pointer to the LCD screen data
- * @size  size in bytes of @data
- * @type  the G19UpdateType to be used
+ * @param dev  The #G19Device.
+ * @param size The return location for the size or NULL.
+ *
+ * @return The list of #G19PollFDs or NULL on error.
  **/
-void g19_update_lcd(uint8_t *data, size_t size, G19UpdateType type)
+G19PollFD *g19_device_pollfds(G19Device *dev, size_t *size)
+{
+    const struct libusb_pollfd **fds;
+    G19PollFD *ret;
+    int        i;
+
+    if (dev == NULL)
+        return NULL;
+
+    fds = libusb_get_pollfds(dev->ctx);
+
+    if (fds == NULL)
+        return NULL;
+
+    for (i = 0; fds[i] != NULL; i++);
+    ret = calloc(sizeof *ret, i + 1);
+    assert(ret != NULL);
+    memset(ret, 0, (sizeof (*ret)) * (i + 1));
+
+    for (i = 0; fds[i] != NULL; i++) {
+        ret[i].fd     = fds[i]->fd;
+        ret[i].events = fds[i]->events;
+    }
+
+    if (size != NULL)
+        *size = i;
+
+    return ret;
+}
+
+/**
+ * Gets the poll timeout. If this timeout threshold is reached, and no
+ * events were caught, #g19_device_pollev() must be called.
+ *
+ * @param dev The #G19Device.
+ * @param tv  The return location for a #timeval.
+ *
+ * @return 0 if no timeout, 1 if there was a timeout, or the
+ *         #libusb_error.
+ **/
+int g19_device_pollto(G19Device *dev, struct timeval *tv)
+{
+    if ((dev == NULL) || (tv == NULL))
+        return LIBUSB_ERROR_INVALID_PARAM;
+
+    return libusb_get_next_timeout(dev->ctx, tv);
+}
+
+/**
+ * Handles polled events.
+ *
+ * @param dev The #G19Device.
+ *
+ * @return The #libusb_error (0 on success).
+ **/
+int g19_device_pollev(G19Device *dev)
+{
+    static struct timeval tv = {0, 0};
+
+    if (dev == NULL)
+        return LIBUSB_ERROR_INVALID_PARAM;
+
+    return libusb_handle_events_locked(dev->ctx, &tv);
+}
+
+/**
+ * Gets number of G19 devices.
+ *
+ * @return The #libusb_error (0 on success).
+ **/
+ssize_t g19_device_count(void)
+{
+    libusb_context  *ctx;
+    libusb_device  **devs;
+    ssize_t          devc;
+    int              res;
+    int              i;
+
+    struct libusb_device_descriptor desc;
+
+    res = libusb_init(&ctx);
+
+    if (res != LIBUSB_SUCCESS)
+        return res;
+
+    devc = libusb_get_device_list(ctx, &devs);
+
+    if (devc < LIBUSB_SUCCESS) {
+        libusb_exit(ctx);
+        return devc;
+    }
+
+    for (i = 0, devc = 0; devs[i] != NULL; i++) {
+        res = libusb_get_device_descriptor(devs[i], &desc);
+
+        if ((res == LIBUSB_SUCCESS) &&
+            (desc.idVendor  == G19_VENDOR_ID) &&
+            (desc.idProduct == G19_PRODUCT_ID))
+        {
+            devc++;
+        }
+    }
+
+    libusb_free_device_list(devs, 1);
+    libusb_exit(ctx);
+
+    return devc;
+}
+
+/**
+ * Sets LCD display via a bitmap.
+ *
+ * @param dev  The #G19Device.
+ * @param data The LCD data.
+ * @param size The size of the data.
+ * @param type The #G19UpdateType.
+ *
+ * @return The #libusb_error (0 on success).
+ **/
+int g19_device_lcd(G19Device *dev, uint8_t *data, size_t size,
+                    G19UpdateType type)
 {
     struct libusb_transfer *transfer;
     uint8_t  *bits;
@@ -283,19 +375,19 @@ void g19_update_lcd(uint8_t *data, size_t size, G19UpdateType type)
     int       i;
     int       d;
 
-    if ((dhandle == NULL) || (size < 1))
-        return;
+    if ((dev == NULL) || (data == NULL) || (size < 0))
+        return LIBUSB_ERROR_INVALID_PARAM;
 
-    transfer        = libusb_alloc_transfer(0);
+    transfer = libusb_alloc_transfer(0);
     transfer->flags = LIBUSB_TRANSFER_FREE_TRANSFER;
 
     bits = malloc(G19_BMP_SIZE);
 
     memset(bits, 0x00, G19_BMP_SIZE);
-    memcpy(bits, hdata, HDATA_SIZE);
+    memcpy(bits, g19_data_hdr, G19_DATA_HDR_SIZE);
 
     if (!(type & G19_UPDATE_TYPE_RAW)) {
-        i = HDATA_SIZE;
+        i = G19_DATA_HDR_SIZE;
         d = 0;
 
         /* Convert from 32-bit bitmap to 16-bit while ignoring
@@ -312,59 +404,60 @@ void g19_update_lcd(uint8_t *data, size_t size, G19UpdateType type)
         if (size > G19_BMP_DSIZE)
             size = G19_BMP_DSIZE;
 
-        memcpy(bits + HDATA_SIZE, data, size);
+        memcpy(bits + G19_DATA_HDR_SIZE, data, size);
     }
 
-    libusb_fill_bulk_transfer(transfer, dhandle, 0x02, bits, G19_BMP_SIZE,
+    libusb_fill_bulk_transfer(transfer, dev->hndl, 0x02, bits, G19_BMP_SIZE,
                               NULL, NULL, 0);
-    libusb_submit_transfer(transfer);
-}
-
-/**
- * Sets the LCDs brightness level
- *
- * @level  the brightness level (0 - 100)
- *
- * return  0 on success, or non-zero on error.  Refer to the libusb
- *         error messages.
- **/
-int g19_set_brightness(uint8_t level)
-{
-    struct libusb_transfer *transfer;
-    uint8_t data[9];
-
-    if (dhandle == NULL)
-        return LIBUSB_ERROR_NO_DEVICE;
-
-    transfer        = libusb_alloc_transfer(0);
-    transfer->flags = LIBUSB_TRANSFER_FREE_TRANSFER;
-
-    data[8] = level;
-
-    libusb_fill_control_setup(data, 0x41, 10, 0, 0, 1);
-    libusb_fill_control_transfer(transfer, dhandle, data, NULL, NULL, 0);
     return libusb_submit_transfer(transfer);
 }
 
 /**
- * Sets the backlight color
+ * Sets the LCDs brightness level.
  *
- * @r       amount of red (0 - 255)
- * @g       amount of green (0 - 255)
- * @b       amount of blue (0 - 255)
+ * @param dev   The #G19Device.
+ * @param level The brightness (0 - 100).
  *
- * @return  0 on success, or non-zero on error.  Refer to the libusb
- *          error messages.
+ * @return The #libusb_error (0 on success).
  **/
-int g19_set_backlight(uint8_t r, uint8_t g, uint8_t b)
+int g19_device_brightness(G19Device *dev, uint8_t brightness)
+{
+    struct libusb_transfer *transfer;
+    uint8_t data[9];
+
+    if (dev == NULL)
+        return LIBUSB_ERROR_INVALID_PARAM;
+
+    transfer = libusb_alloc_transfer(0);
+    transfer->flags = LIBUSB_TRANSFER_FREE_TRANSFER;
+
+    data[8] = brightness;
+
+    libusb_fill_control_setup(data, 0x41, 0x10, 0x00, 0x00, 1);
+    libusb_fill_control_transfer(transfer, dev->hndl, data, NULL, NULL, 0);
+
+    return libusb_submit_transfer(transfer);
+}
+
+/**
+ * Sets the backlight color.
+ *
+ * @param dev The #G19Device.
+ * @param r   The red (0 - 255).
+ * @param g   The green (0 - 255).
+ * @param b   The blue (0 - 255).
+ *
+ * @return The #libusb_error (0 on success).
+ **/
+int g19_device_backlight(G19Device *dev, uint8_t r, uint8_t g, uint8_t b)
 {
     struct libusb_transfer *transfer;
     uint8_t data[12];
 
-    if (dhandle == NULL)
-        return LIBUSB_ERROR_NO_DEVICE;
+    if (dev == NULL)
+        return LIBUSB_ERROR_INVALID_PARAM;
 
-    transfer        = libusb_alloc_transfer(0);
+    transfer = libusb_alloc_transfer(0);
     transfer->flags = LIBUSB_TRANSFER_FREE_TRANSFER;
 
     data[8]  = 255;
@@ -372,32 +465,29 @@ int g19_set_backlight(uint8_t r, uint8_t g, uint8_t b)
     data[10] = g;
     data[11] = b;
 
-    libusb_fill_control_setup(data, 0x21, 9, 0x307, 1, 4);
-    libusb_fill_control_transfer(transfer, dhandle, data, NULL, NULL, 0);
+    libusb_fill_control_setup(data, 0x21, 0x09, 0x0307, 0x01, 4);
+    libusb_fill_control_transfer(transfer, dev->hndl, data, NULL, NULL, 0);
+
     return libusb_submit_transfer(transfer);
 }
 
 /**
- * Sets the M-Key LEDs. To turn of an M-Key LED, call this function
- * with a @keys being 0, and then set the keys that needs to be on by
- * calling this function again.
+ * Sets the state of the M-Key LEDs.
  *
- * @keys    Can be any of the following keys: G19_KEY_M1, G19_KEY_M2,
- *          G19_KEY_M3, G19_KEY_MR.  Additionally, more than one can
- *          be set at a time with a bitwise OR.
+ * @param dev  The #G19Device.
+ * @param keys The #G19GKeys.
  *
- * @return  0 on success, or non-zero on error.  Refer to the libusb
- *          error messages.
+ * @return The #libusb_error (0 on success).
  **/
-int g19_set_mkey_led(uint32_t keys)
+int g19_device_mkeys(G19Device *dev, uint32_t keys)
 {
     struct libusb_transfer *transfer;
     uint8_t data[10];
 
-    if (dhandle == NULL)
-        return LIBUSB_ERROR_NO_DEVICE;
+    if (dev == NULL)
+        return LIBUSB_ERROR_INVALID_PARAM;
 
-    transfer        = libusb_alloc_transfer(0);
+    transfer = libusb_alloc_transfer(0);
     transfer->flags = LIBUSB_TRANSFER_FREE_TRANSFER;
 
     data[8] = 0x10;
@@ -415,7 +505,8 @@ int g19_set_mkey_led(uint32_t keys)
     if (keys & G19_KEY_MR)
         data[9] |= 0x10 << 0;
 
-    libusb_fill_control_setup(data, 0x21, 9, 0x305, 1, 2);
-    libusb_fill_control_transfer(transfer, dhandle, data, NULL, NULL, 0);
+    libusb_fill_control_setup(data, 0x21, 0x09, 0x0305, 0x01, 2);
+    libusb_fill_control_transfer(transfer, dev->hndl, data, NULL, NULL, 0);
+
     return libusb_submit_transfer(transfer);
 }
