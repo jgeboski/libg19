@@ -357,23 +357,20 @@ ssize_t g19_device_count(void)
 }
 
 /**
- * Sets LCD display via a bitmap.
+ * Sends a bitmap to the LCD display. This requires the bitmap data be
+ * in 5-6-5 format. It is advised to use Cairo with a surface in the
+ * format of CAIRO_FORMAT_RGB16_565.
  *
  * @param dev  The #G19Device.
  * @param data The LCD data.
- * @param size The size of the data.
- * @param type The #G19UpdateType.
+ * @param size The size of the data (should be G19_SIZE).
  *
  * @return The #libusb_error (0 on success).
  **/
-int g19_device_lcd(G19Device *dev, uint8_t *data, size_t size,
-                    G19UpdateType type)
+int g19_device_lcd(G19Device *dev, const uint8_t *data, size_t size)
 {
     struct libusb_transfer *transfer;
-    uint8_t  *bits;
-    uint16_t  color;
-    int       i;
-    int       d;
+    uint8_t bytes[G19_SIZE_FULL];
 
     if ((dev == NULL) || (data == NULL) || (size < 0))
         return LIBUSB_ERROR_INVALID_PARAM;
@@ -381,33 +378,11 @@ int g19_device_lcd(G19Device *dev, uint8_t *data, size_t size,
     transfer = libusb_alloc_transfer(0);
     transfer->flags = LIBUSB_TRANSFER_FREE_TRANSFER;
 
-    bits = malloc(G19_BMP_SIZE);
+    memset(bytes, 0, sizeof bytes);
+    memcpy(bytes, g19_data_hdr, G19_SIZE_HDR);
+    memcpy(bytes + G19_SIZE_HDR, data, size);
 
-    memset(bits, 0x00, G19_BMP_SIZE);
-    memcpy(bits, g19_data_hdr, G19_DATA_HDR_SIZE);
-
-    if (!(type & G19_UPDATE_TYPE_RAW)) {
-        i = G19_DATA_HDR_SIZE;
-        d = 0;
-
-        /* Convert from 32-bit bitmap to 16-bit while ignoring
-         * the alpha pixel
-         */
-        for(; (i < G19_BMP_DSIZE) && (d < size); i += 2, d += 4) {
-            color  = (data[d] / 8) << 11;
-            color |= (data[d + 1] / 4) << 5;
-            color |= data[d + 2] / 8;
-
-            memcpy(bits + i, &color, 2);
-        }
-    } else {
-        if (size > G19_BMP_DSIZE)
-            size = G19_BMP_DSIZE;
-
-        memcpy(bits + G19_DATA_HDR_SIZE, data, size);
-    }
-
-    libusb_fill_bulk_transfer(transfer, dev->hndl, 0x02, bits, G19_BMP_SIZE,
+    libusb_fill_bulk_transfer(transfer, dev->hndl, 0x02, bytes, G19_SIZE_FULL,
                               NULL, NULL, 0);
     return libusb_submit_transfer(transfer);
 }

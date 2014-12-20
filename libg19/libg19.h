@@ -25,11 +25,13 @@
 #define LIBG19_VERCODE(m1, m2, m3) (((m1) << 16) | ((m2) << 8) | (m3))
 #define LIBG19_VERSION LIBG19_VERCODE(1, 1, 1)
 
-#define G19_BMP_SIZE      154112
-#define G19_BMP_DSIZE     153600
-#define G19_VENDOR_ID     0x046d
-#define G19_PRODUCT_ID    0xc229
-#define G19_DATA_HDR_SIZE 512
+#define G19_SIZE_DATA  (G19_WIDTH * G19_HEIGHT * 2)
+#define G19_SIZE_FULL  (G19_SIZE_HDR + G19_SIZE_DATA)
+#define G19_SIZE_HDR   512
+#define G19_WIDTH      320
+#define G19_HEIGHT     240
+#define G19_VENDOR_ID  0x046D
+#define G19_PRODUCT_ID 0xC229
 
 #ifdef __cplusplus
 extern "C"
@@ -38,9 +40,6 @@ extern "C"
 
 /** The special keys of the keyboard. **/
 typedef enum _G19Keys  G19Keys;
-
-/** The formatting of the LCD data. **/
-typedef enum _G19UpdateType G19UpdateType;
 
 /** The structure for a G19 device. **/
 typedef struct _G19Device G19Device;
@@ -84,15 +83,6 @@ enum _G19Keys
 
 
 /**
- * The formatting of the LCD data.
- **/
-enum _G19UpdateType
-{
-    G19_UPDATE_TYPE_BMP  = 1 << 0,
-    G19_UPDATE_TYPE_RAW  = 1 << 1
-};
-
-/**
  * The structure for a G19 device.
  **/
 struct _G19Device
@@ -120,7 +110,7 @@ struct _G19PollFD
 };
 
 
-extern const uint8_t g19_data_hdr[G19_DATA_HDR_SIZE];
+extern const uint8_t g19_data_hdr[G19_SIZE_HDR];
 
 ssize_t g19_device_count(void);
 
@@ -134,8 +124,7 @@ int g19_device_pollto(G19Device *dev, struct timeval *tv);
 
 int g19_device_pollev(G19Device *dev);
 
-int g19_device_lcd(G19Device *dev, uint8_t *data, size_t size,
-                    G19UpdateType type);
+int g19_device_lcd(G19Device *dev, const uint8_t *data, size_t size);
 
 int g19_device_brightness(G19Device *dev, uint8_t brightness);
 
