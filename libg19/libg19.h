@@ -39,19 +39,19 @@ extern "C"
 #endif
 
 /** The special keys of the keyboard. **/
-typedef enum _G19Keys  G19Keys;
+typedef enum g19_keys g19_keys_t;
 
 /** The structure for a G19 device. **/
-typedef struct _G19Device G19Device;
+typedef struct g19_device g19_device_t;
 
 /** The structure for a file descriptor to poll. **/
-typedef struct _G19PollFD G19PollFD;
+typedef struct g19_poll_fd g19_poll_fd_t;
 
 
 /**
  * The special keys of the keyboard.
  **/
-enum _G19Keys
+enum g19_keys
 {
     G19_KEY_LHOME   = 1 << 0,
     G19_KEY_LCANCEL = 1 << 1,
@@ -85,7 +85,7 @@ enum _G19Keys
 /**
  * The structure for a G19 device.
  **/
-struct _G19Device
+struct g19_device
 {
     void *ctx;    /** The #libusb_context. **/
     void *hndl;   /** The #libusb_device_handle. **/
@@ -97,13 +97,13 @@ struct _G19Device
     void *data;   /** The user-defined callback data. **/
 
     /** The callback for G and M keys. **/
-    void (*keys) (G19Device *dev, uint32_t keys, void *data);
+    void (*keys) (g19_device_t *dev, uint32_t keys, void *data);
 };
 
 /**
  * The structure for a file descriptor to poll.
  **/
-struct _G19PollFD
+struct g19_poll_fd
 {
     int   fd;     /* The file descriptor. */
     short events; /* The event flags. */
@@ -114,23 +114,23 @@ extern const uint8_t g19_data_hdr[G19_SIZE_HDR];
 
 ssize_t g19_device_count(void);
 
-G19Device *g19_device_open(size_t index, int *error);
+g19_device_t *g19_device_open(size_t index, int *error);
 
-void g19_device_close(G19Device *dev);
+void g19_device_close(g19_device_t *dev);
 
-G19PollFD *g19_device_pollfds(G19Device *dev, size_t *size);
+g19_poll_fd_t *g19_device_pollfds(g19_device_t *dev, size_t *size);
 
-int g19_device_pollto(G19Device *dev, struct timeval *tv);
+int g19_device_pollto(g19_device_t *dev, struct timeval *tv);
 
-int g19_device_pollev(G19Device *dev);
+int g19_device_pollev(g19_device_t *dev);
 
-int g19_device_lcd(G19Device *dev, const uint8_t *data, size_t size);
+int g19_device_lcd(g19_device_t *dev, const uint8_t *data, size_t size);
 
-int g19_device_brightness(G19Device *dev, uint8_t brightness);
+int g19_device_brightness(g19_device_t *dev, uint8_t brightness);
 
-int g19_device_backlight(G19Device *dev, uint8_t r, uint8_t g, uint8_t b);
+int g19_device_backlight(g19_device_t *dev, uint8_t r, uint8_t g, uint8_t b);
 
-int g19_device_mkeys(G19Device *dev, uint32_t keys);
+int g19_device_mkeys(g19_device_t *dev, uint32_t keys);
 
 #ifdef __cplusplus
 }

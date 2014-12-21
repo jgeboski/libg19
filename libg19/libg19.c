@@ -22,15 +22,16 @@
 #include "libg19.h"
 
 /**
- * Initializes a #G19Device with the specified device.
+ * Initializes a #g19_device_t with the specified device.
  *
- * @param dev   The #G19Device.
+ * @param dev   The #g19_device_t.
  * @param devs  The list of #libusb_device.
  * @param index The device index.
  *
- * @return The #G19Device or NULL on error.
+ * @return The #libusb_error (0 on success).
  **/
-static int g19_device_init(G19Device *dev, libusb_device **devs, size_t index)
+static int g19_device_init(g19_device_t *dev, libusb_device **devs,
+                           size_t index)
 {
     int devc;
     int res;
@@ -102,8 +103,8 @@ static int g19_device_init(G19Device *dev, libusb_device **devs, size_t index)
  **/
 static void g19_device_gkey_cb(struct libusb_transfer *transfer)
 {
-    G19Device *dev = transfer->user_data;
-    uint32_t   keys;
+    g19_device_t *dev = transfer->user_data;
+    uint32_t      keys;
 
     memset(&keys, 0, sizeof keys);
     memcpy(&keys, transfer->buffer, 4);
@@ -122,8 +123,8 @@ static void g19_device_gkey_cb(struct libusb_transfer *transfer)
  **/
 static void g19_device_lkey_cb(struct libusb_transfer *transfer)
 {
-    G19Device *dev = transfer->user_data;
-    uint32_t   keys;
+    g19_device_t *dev = transfer->user_data;
+    uint32_t      keys;
 
     memset(&keys, 0, sizeof keys);
     memcpy(&keys, transfer->buffer, 2);
@@ -134,17 +135,17 @@ static void g19_device_lkey_cb(struct libusb_transfer *transfer)
 }
 
 /**
- * Opens a new #G19Device. The returned #G19Device should be closed with
- * #g19_device_close() when no longer needed.
+ * Opens a new #g19_device_t. The returned #g19_device_t should be
+ * closed with #g19_device_close() when no longer needed.
  *
  * @param index The device index.
  * @param error The return location for a #libusb_error or NULL.
  *
- * @return The #G19Device or NULL on error.
+ * @return The #g19_device_t or NULL on error.
  **/
-G19Device *g19_device_open(size_t index, int *error)
+g19_device_t *g19_device_open(size_t index, int *error)
 {
-    G19Device      *dev;
+    g19_device_t   *dev;
     libusb_device **devs;
     size_t          devc;
     uint8_t         data[7];
@@ -209,11 +210,11 @@ error:
 }
 
 /**
- * Closes and frees all memory used by a #G19Device.
+ * Closes and frees all memory used by a #g19_device_t.
  *
- * @param dev The #G19Device.
+ * @param dev The #g19_device_t.
  **/
-void g19_device_close(G19Device *dev)
+void g19_device_close(g19_device_t *dev)
 {
     if (dev == NULL)
         return;
@@ -242,16 +243,16 @@ void g19_device_close(G19Device *dev)
  * Gets a NULL-terminated list of file descriptors for polling. The
  * returned list should be freed with #free() when no longer needed.
  *
- * @param dev  The #G19Device.
+ * @param dev  The #g19_device_t.
  * @param size The return location for the size or NULL.
  *
- * @return The list of #G19PollFDs or NULL on error.
+ * @return The list of #g19_poll_fd_t or NULL on error.
  **/
-G19PollFD *g19_device_pollfds(G19Device *dev, size_t *size)
+g19_poll_fd_t *g19_device_pollfds(g19_device_t *dev, size_t *size)
 {
     const struct libusb_pollfd **fds;
-    G19PollFD *ret;
-    int        i;
+    g19_poll_fd_t *ret;
+    int            i;
 
     if (dev == NULL)
         return NULL;
@@ -281,13 +282,13 @@ G19PollFD *g19_device_pollfds(G19Device *dev, size_t *size)
  * Gets the poll timeout. If this timeout threshold is reached, and no
  * events were caught, #g19_device_pollev() must be called.
  *
- * @param dev The #G19Device.
+ * @param dev The #g19_device_t.
  * @param tv  The return location for a #timeval.
  *
  * @return 0 if no timeout, 1 if there was a timeout, or the
  *         #libusb_error.
  **/
-int g19_device_pollto(G19Device *dev, struct timeval *tv)
+int g19_device_pollto(g19_device_t *dev, struct timeval *tv)
 {
     if ((dev == NULL) || (tv == NULL))
         return LIBUSB_ERROR_INVALID_PARAM;
@@ -298,11 +299,11 @@ int g19_device_pollto(G19Device *dev, struct timeval *tv)
 /**
  * Handles polled events.
  *
- * @param dev The #G19Device.
+ * @param dev The #g19_device_t.
  *
  * @return The #libusb_error (0 on success).
  **/
-int g19_device_pollev(G19Device *dev)
+int g19_device_pollev(g19_device_t *dev)
 {
     static struct timeval tv = {0, 0};
 
@@ -361,13 +362,13 @@ ssize_t g19_device_count(void)
  * in 5-6-5 format. It is advised to use Cairo with a surface in the
  * format of CAIRO_FORMAT_RGB16_565.
  *
- * @param dev  The #G19Device.
+ * @param dev  The #g19_device_t.
  * @param data The LCD data.
  * @param size The size of the data (should be G19_SIZE).
  *
  * @return The #libusb_error (0 on success).
  **/
-int g19_device_lcd(G19Device *dev, const uint8_t *data, size_t size)
+int g19_device_lcd(g19_device_t *dev, const uint8_t *data, size_t size)
 {
     struct libusb_transfer *transfer;
     uint8_t bytes[G19_SIZE_FULL];
@@ -390,12 +391,12 @@ int g19_device_lcd(G19Device *dev, const uint8_t *data, size_t size)
 /**
  * Sets the LCDs brightness level.
  *
- * @param dev   The #G19Device.
+ * @param dev   The #g19_device_t.
  * @param level The brightness (0 - 100).
  *
  * @return The #libusb_error (0 on success).
  **/
-int g19_device_brightness(G19Device *dev, uint8_t brightness)
+int g19_device_brightness(g19_device_t *dev, uint8_t brightness)
 {
     struct libusb_transfer *transfer;
     uint8_t data[9];
@@ -417,14 +418,14 @@ int g19_device_brightness(G19Device *dev, uint8_t brightness)
 /**
  * Sets the backlight color.
  *
- * @param dev The #G19Device.
+ * @param dev The #g19_device_t.
  * @param r   The red (0 - 255).
  * @param g   The green (0 - 255).
  * @param b   The blue (0 - 255).
  *
  * @return The #libusb_error (0 on success).
  **/
-int g19_device_backlight(G19Device *dev, uint8_t r, uint8_t g, uint8_t b)
+int g19_device_backlight(g19_device_t *dev, uint8_t r, uint8_t g, uint8_t b)
 {
     struct libusb_transfer *transfer;
     uint8_t data[12];
@@ -449,12 +450,12 @@ int g19_device_backlight(G19Device *dev, uint8_t r, uint8_t g, uint8_t b)
 /**
  * Sets the state of the M-Key LEDs.
  *
- * @param dev  The #G19Device.
- * @param keys The #G19GKeys.
+ * @param dev  The #g19_device_t.
+ * @param keys The #g19_keys_t.
  *
  * @return The #libusb_error (0 on success).
  **/
-int g19_device_mkeys(G19Device *dev, uint32_t keys)
+int g19_device_mkeys(g19_device_t *dev, uint32_t keys)
 {
     struct libusb_transfer *transfer;
     uint8_t data[10];
